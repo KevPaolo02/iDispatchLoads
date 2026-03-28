@@ -165,7 +165,19 @@ export async function captureLeadFromFormData(formData: FormData): Promise<LeadS
       leadId: lead.id,
     };
   } catch (error) {
-    console.error("[lead-capture] Failed to store lead", error);
+    console.error("[lead-capture] Failed to store lead", {
+      error: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined,
+      leadContext: {
+        email: leadInput.email,
+        phone: leadInput.phone,
+        truckType: leadInput.truckType,
+        preferredLanes: leadInput.preferredLanes,
+        source: leadInput.source,
+        campaign: leadInput.campaign,
+        status: leadInput.status,
+      },
+    });
 
     return {
       status: "error",

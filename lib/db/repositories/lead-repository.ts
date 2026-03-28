@@ -1,6 +1,5 @@
 import { getDatabase } from "@/lib/db/client";
 import type { Lead, LeadCreateInput, LeadRow } from "@/lib/types";
-import { createStableId } from "@/lib/utils";
 
 function mapLeadRow(row: LeadRow): Lead {
   return {
@@ -22,9 +21,7 @@ function mapLeadRow(row: LeadRow): Lead {
 
 export async function createLead(input: LeadCreateInput): Promise<Lead> {
   const db = getDatabase();
-  const timestamp = new Date().toISOString();
   const leadInput = {
-    id: createStableId(),
     firstName: input.firstName,
     lastName: input.lastName,
     phone: input.phone,
@@ -35,14 +32,11 @@ export async function createLead(input: LeadCreateInput): Promise<Lead> {
     status: input.status,
     source: input.source,
     campaign: input.campaign,
-    createdAt: timestamp,
-    updatedAt: timestamp,
   };
 
   const { data, error } = await db
     .from("leads")
     .insert({
-      id: leadInput.id,
       first_name: leadInput.firstName,
       last_name: leadInput.lastName,
       phone: leadInput.phone,
@@ -53,14 +47,46 @@ export async function createLead(input: LeadCreateInput): Promise<Lead> {
       status: leadInput.status,
       source: leadInput.source,
       campaign: leadInput.campaign,
-      created_at: leadInput.createdAt,
-      updated_at: leadInput.updatedAt,
     })
     .select()
     .single();
 
-  if (error || !data) {
-    throw new Error(error?.message ?? "Unable to create lead.");
+  if (error) {
+    console.error("[lead-repository] Supabase insert failed", {
+      table: "leads",
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      payload: {
+        email: leadInput.email,
+        phone: leadInput.phone,
+        truckType: leadInput.truckType,
+        preferredLanes: leadInput.preferredLanes,
+        status: leadInput.status,
+        source: leadInput.source,
+        campaign: leadInput.campaign,
+      },
+    });
+
+    throw new Error(`Unable to create lead: ${error.message}`);
+  }
+
+  if (!data) {
+    console.error("[lead-repository] Supabase insert returned no row", {
+      table: "leads",
+      payload: {
+        email: leadInput.email,
+        phone: leadInput.phone,
+        truckType: leadInput.truckType,
+        preferredLanes: leadInput.preferredLanes,
+        status: leadInput.status,
+        source: leadInput.source,
+        campaign: leadInput.campaign,
+      },
+    });
+
+    throw new Error("Unable to create lead: insert returned no row.");
   }
 
   return mapLeadRow(data as LeadRow);

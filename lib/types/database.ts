@@ -16,7 +16,8 @@ export type LeadRow = {
   updated_at: string;
 };
 
-export type LeadInsertRow = Omit<LeadRow, "created_at" | "updated_at"> & {
+export type LeadInsertRow = Omit<LeadRow, "id" | "created_at" | "updated_at"> & {
+  id?: string;
   created_at?: string;
   updated_at?: string;
 };
