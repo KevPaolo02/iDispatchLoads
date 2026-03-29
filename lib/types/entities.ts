@@ -18,12 +18,60 @@ export const driverStatuses = [
   "in_transit",
 ] as const;
 export const dispatchLoadStatuses = [
-  "searching",
+  "posted",
+  "negotiating",
   "booked",
-  "dispatched",
+  "assigned",
+  "pickup_scheduled",
   "picked_up",
+  "in_transit",
   "delivered",
+  "closed",
+  "problem_hold",
 ] as const;
+export const loadOpportunityStatuses = [
+  "new",
+  "needs_review",
+  "needs_quote",
+  "awaiting_customer",
+  "ready_to_post",
+  "closed_won",
+  "closed_lost",
+  "on_hold",
+] as const;
+export const loadVehicleOperabilityStatuses = [
+  "operable",
+  "inop",
+] as const;
+export const activityEntityTypes = [
+  "load",
+  "load_opportunity",
+] as const;
+export const activityActionTypes = [
+  "status_changed",
+  "notes_saved",
+  "pricing_updated",
+  "assignment_updated",
+  "schedule_updated",
+  "problem_flag_created",
+  "problem_flag_resolved",
+  "details_updated",
+  "vehicle_added",
+  "vehicle_updated",
+  "vehicle_removed",
+  "record_created",
+] as const;
+export const problemFlagTypes = [
+  "late_pickup",
+  "late_delivery",
+  "no_carrier_response",
+  "no_customer_response",
+  "pricing_issue",
+  "damage_issue",
+  "missing_docs",
+  "reschedule_needed",
+] as const;
+export const problemPriorityLevels = ["low", "medium", "high"] as const;
 export const partyStatuses = ["prospect", "active", "inactive"] as const;
 export const loadStatuses = [
   "available",
@@ -53,6 +101,7 @@ export const relatedEntityTypes = [
   "truck",
   "broker",
   "load",
+  "load_opportunity",
   "document",
   "task",
 ] as const;
@@ -62,6 +111,13 @@ export type LeadStatus = (typeof leadStatuses)[number];
 export type V1LeadStatus = (typeof v1LeadStatuses)[number];
 export type DriverStatus = (typeof driverStatuses)[number];
 export type DispatchLoadStatus = (typeof dispatchLoadStatuses)[number];
+export type LoadOpportunityStatus = (typeof loadOpportunityStatuses)[number];
+export type LoadVehicleOperabilityStatus =
+  (typeof loadVehicleOperabilityStatuses)[number];
+export type ActivityEntityType = (typeof activityEntityTypes)[number];
+export type ActivityActionType = (typeof activityActionTypes)[number];
+export type ProblemFlagType = (typeof problemFlagTypes)[number];
+export type ProblemPriorityLevel = (typeof problemPriorityLevels)[number];
 export type PartyStatus = (typeof partyStatuses)[number];
 export type LoadStatus = (typeof loadStatuses)[number];
 export type DocumentStatus = (typeof documentStatuses)[number];
@@ -121,8 +177,15 @@ export interface Driver extends BaseEntity {
   driverName: string;
   phone: string;
   truckType: string;
+  truckUnitNumber: string | null;
+  truckVin: string | null;
+  trailerUnitNumber: string | null;
+  trailerVin: string | null;
   preferredLanes: string | null;
   homeBase: string;
+  currentLocation: string | null;
+  availableFrom: string | null;
+  capacity: number | null;
   status: DriverStatus;
   notes: string | null;
 }
@@ -148,15 +211,116 @@ export interface Broker extends BaseEntity {
 export interface Load extends BaseEntity {
   driverId: string | null;
   sourceLeadId: string | null;
+  sourceOpportunityId: string | null;
   company: string;
   origin: string;
   destination: string;
+  pickupCity: string | null;
+  pickupState: string | null;
+  pickupZip: string | null;
+  deliveryCity: string | null;
+  deliveryState: string | null;
+  deliveryZip: string | null;
+  trailerType: string | null;
+  customerName: string | null;
+  customerPhone: string | null;
+  customerEmail: string | null;
   pickupDate: string | null;
   deliveryDate: string | null;
   broker: string;
+  customerPrice: number | null;
+  carrierPay: number | null;
+  depositCollected: boolean;
+  codAmount: number | null;
+  referenceNumber: string | null;
+  contactName: string | null;
+  contactPhone: string | null;
+  pickupContactName: string | null;
+  pickupContactPhone: string | null;
+  deliveryContactName: string | null;
+  deliveryContactPhone: string | null;
+  carrierCompany: string | null;
+  carrierMcNumber: string | null;
+  carrierDispatcherName: string | null;
+  carrierDispatcherPhone: string | null;
+  carrierDriverName: string | null;
+  carrierDriverPhone: string | null;
+  truckTrailerType: string | null;
   rate: number | null;
   status: DispatchLoadStatus;
   notes: string | null;
+}
+
+export interface LoadOpportunity extends BaseEntity {
+  source: string;
+  sourceUrl: string | null;
+  sourceReference: string | null;
+  company: string | null;
+  origin: string;
+  destination: string;
+  pickupCity: string | null;
+  pickupState: string | null;
+  pickupZip: string | null;
+  deliveryCity: string | null;
+  deliveryState: string | null;
+  deliveryZip: string | null;
+  trailerType: string | null;
+  customerName: string | null;
+  customerPhone: string | null;
+  customerEmail: string | null;
+  firstAvailableDate: string | null;
+  pickupWindow: string | null;
+  deliveryWindow: string | null;
+  vehiclesCount: number;
+  customerPrice: number | null;
+  carrierPay: number | null;
+  rate: number | null;
+  contactName: string | null;
+  contactPhone: string | null;
+  status: LoadOpportunityStatus;
+  assignedDriverId: string | null;
+  notes: string | null;
+}
+
+export interface LoadVehicle extends BaseEntity {
+  loadId: string;
+  year: number | null;
+  make: string;
+  model: string;
+  vin: string | null;
+  lotNumber: string | null;
+  operability: LoadVehicleOperabilityStatus;
+}
+
+export interface LoadOpportunityVehicle extends BaseEntity {
+  opportunityId: string;
+  year: number | null;
+  make: string;
+  model: string;
+  vin: string | null;
+  lotNumber: string | null;
+  operability: LoadVehicleOperabilityStatus;
+}
+
+export interface ActivityEvent extends BaseEntity {
+  entityType: ActivityEntityType;
+  entityId: string;
+  actionType: ActivityActionType;
+  actorEmail: string;
+  actorRole: UserRole;
+  noteBody: string | null;
+  oldValue: Record<string, unknown> | null;
+  newValue: Record<string, unknown> | null;
+}
+
+export interface ProblemFlag extends BaseEntity {
+  entityType: ActivityEntityType;
+  entityId: string;
+  flagType: ProblemFlagType;
+  priority: ProblemPriorityLevel;
+  noteBody: string;
+  resolvedAt: string | null;
+  resolvedByEmail: string | null;
 }
 
 export interface Document extends BaseEntity {

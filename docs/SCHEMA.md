@@ -16,7 +16,7 @@ Why:
 
 The current production database schema for V1 lives in:
 
-- [supabase/migrations/20260328190000_initial_leads.sql](/Users/kevincastrillonmiranda/idispatchloads/supabase/migrations/20260328190000_initial_leads.sql)
+- [20260328190000_initial_leads.sql](/Users/kevincastrillonmiranda/iDispatchLoads.com/supabase/migrations/20260328190000_initial_leads.sql)
 
 ## Active V1 Table
 
@@ -48,7 +48,7 @@ to full CRM or TMS scope.
 
 Migration:
 
-- [20260328194000_dispatch_lite.sql](/Users/kevincastrillonmiranda/idispatchloads/supabase/migrations/20260328194000_dispatch_lite.sql)
+- [20260328194000_dispatch_lite.sql](/Users/kevincastrillonmiranda/iDispatchLoads.com/supabase/migrations/20260328194000_dispatch_lite.sql)
 
 ### `drivers`
 
@@ -81,15 +81,168 @@ Migration:
 | `delivery_date` | `TIMESTAMPTZ` | Planned delivery |
 | `broker` | `TEXT NOT NULL` | Broker name |
 | `rate` | `NUMERIC(10,2)` | Rate |
-| `status` | `TEXT NOT NULL` | `searching`, `booked`, `dispatched`, `picked_up`, `delivered` |
+| `status` | `TEXT NOT NULL` | `posted`, `negotiating`, `booked`, `assigned`, `pickup_scheduled`, `picked_up`, `in_transit`, `delivered`, `closed`, `problem_hold` |
 | `notes` | `TEXT` | Optional notes |
 | `created_at` | `TIMESTAMPTZ NOT NULL` | Insert timestamp |
 | `updated_at` | `TIMESTAMPTZ NOT NULL` | Last update timestamp |
 
 Additional migration for lightweight activity tracking and lead-to-load traceability:
 
-- [20260328203000_lead_activity_and_load_source.sql](/Users/kevincastrillonmiranda/idispatchloads/supabase/migrations/20260328203000_lead_activity_and_load_source.sql)
-- [20260328212000_driver_source_lead_and_lanes.sql](/Users/kevincastrillonmiranda/idispatchloads/supabase/migrations/20260328212000_driver_source_lead_and_lanes.sql)
+- [20260328203000_lead_activity_and_load_source.sql](/Users/kevincastrillonmiranda/iDispatchLoads.com/supabase/migrations/20260328203000_lead_activity_and_load_source.sql)
+- [20260328212000_driver_source_lead_and_lanes.sql](/Users/kevincastrillonmiranda/iDispatchLoads.com/supabase/migrations/20260328212000_driver_source_lead_and_lanes.sql)
+- [20260329180000_dispatcher_ready_ops.sql](/Users/kevincastrillonmiranda/iDispatchLoads.com/supabase/migrations/20260329180000_dispatcher_ready_ops.sql)
+
+## Fleet Movement Layer
+
+The current ops-focused movement layer keeps Daniel Gruas LLC units visible
+between outside load boards and the live dispatch board.
+
+Migration:
+
+- [20260329093000_movement_board.sql](/Users/kevincastrillonmiranda/iDispatchLoads.com/supabase/migrations/20260329093000_movement_board.sql)
+
+### Driver extensions
+
+The existing `drivers` table is still the operational unit record, but it now
+stores enough movement context to help dispatching:
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `current_location` | `TEXT` | Where the unit is now |
+| `available_from` | `TIMESTAMPTZ` | When the unit can reload |
+| `capacity` | `INTEGER` | Vehicle capacity |
+| `truck_unit_number` | `TEXT` | Internal truck identifier |
+| `truck_vin` | `TEXT` | Truck VIN |
+| `trailer_unit_number` | `TEXT` | Internal trailer identifier |
+| `trailer_vin` | `TEXT` | Trailer VIN |
+
+### `load_opportunities`
+
+This table stores opportunities from Central Dispatch, Super Dispatch, ACV, and
+other boards before they become real booked loads.
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `id` | `UUID PRIMARY KEY` | Stable UUID |
+| `source` | `TEXT NOT NULL` | Board source like `Central Dispatch` |
+| `source_url` | `TEXT` | External posting link |
+| `source_reference` | `TEXT` | Optional post/reference id |
+| `company` | `TEXT` | Dealer, auction, or customer |
+| `origin` | `TEXT NOT NULL` | Pickup origin |
+| `destination` | `TEXT NOT NULL` | Delivery destination |
+| `pickup_window` | `TIMESTAMPTZ` | Pickup timing |
+| `delivery_window` | `TIMESTAMPTZ` | Delivery timing |
+| `vehicles_count` | `INTEGER NOT NULL` | Number of vehicles |
+| `rate` | `NUMERIC(10,2)` | Payout |
+| `contact_name` | `TEXT` | Quick-access contact name |
+| `contact_phone` | `TEXT` | Quick-access contact phone |
+| `status` | `TEXT NOT NULL` | `new`, `needs_review`, `needs_quote`, `awaiting_customer`, `ready_to_post`, `closed_won`, `closed_lost`, `on_hold` |
+| `assigned_driver_id` | `UUID NULL` | Optional unit assignment |
+| `notes` | `TEXT` | Lightweight dispatcher notes |
+| `created_at` | `TIMESTAMPTZ NOT NULL` | Insert timestamp |
+| `updated_at` | `TIMESTAMPTZ NOT NULL` | Last update timestamp |
+
+## Dispatcher Readiness Phase 2
+
+This layer makes the app usable for a hired dispatcher with clear operational
+states, required-field gating, activity history, problem flags, and dashboard
+queues.
+
+Migration:
+
+- [20260329213000_dispatcher_phase2.sql](/Users/kevincastrillonmiranda/iDispatchLoads.com/supabase/migrations/20260329213000_dispatcher_phase2.sql)
+
+### Extended `load_opportunities`
+
+Added fields:
+
+- `pickup_city`, `pickup_state`, `pickup_zip`
+- `delivery_city`, `delivery_state`, `delivery_zip`
+- `trailer_type`
+- `customer_name`, `customer_phone`, `customer_email`
+- `first_available_date`
+- `customer_price`, `carrier_pay`
+
+### Extended `loads`
+
+Added fields:
+
+- `pickup_city`, `pickup_state`, `pickup_zip`
+- `delivery_city`, `delivery_state`, `delivery_zip`
+- `trailer_type`
+- `customer_name`, `customer_phone`, `customer_email`
+- `customer_price`, `carrier_pay`
+- `deposit_collected`, `cod_amount`
+- `reference_number`
+- `contact_name`, `contact_phone`
+- `pickup_contact_name`, `pickup_contact_phone`
+- `delivery_contact_name`, `delivery_contact_phone`
+- `carrier_company`, `carrier_mc_number`
+- `carrier_dispatcher_name`, `carrier_dispatcher_phone`
+- `carrier_driver_name`, `carrier_driver_phone`
+- `truck_trailer_type`
+
+### `load_opportunity_vehicles`
+
+Stores pre-booking vehicle manifests so opportunities can convert into loads
+without re-entering year/make/model/VIN data.
+
+### `activity_events`
+
+Stores the internal timeline for:
+
+- status changes
+- notes saved
+- pricing updates
+- assignment changes
+- schedule updates
+- vehicle changes
+- problem flag creation and resolution
+
+### `problem_flags`
+
+Stores unresolved operational issues with a required note and priority:
+
+- `late_pickup`
+- `late_delivery`
+- `no_carrier_response`
+- `no_customer_response`
+- `pricing_issue`
+- `damage_issue`
+- `missing_docs`
+- `reschedule_needed`
+
+### Load traceability
+
+The existing `loads` table now also supports:
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `source_opportunity_id` | `UUID NULL` | Originating board opportunity |
+| `reference_number` | `TEXT` | Dispatcher reference / confirmation number |
+| `contact_name` | `TEXT` | Quick-access load contact |
+| `contact_phone` | `TEXT` | Quick-access load phone |
+
+This creates the clean operational path:
+
+`board opportunity -> assigned unit -> booked load -> live dispatch execution`
+
+### `load_vehicles`
+
+This is the lightweight booked-load vehicle manifest used for day-to-day auto
+transport dispatching.
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `id` | `UUID PRIMARY KEY` | Stable UUID |
+| `load_id` | `UUID NOT NULL` | Parent booked load |
+| `year` | `INTEGER` | Optional model year |
+| `make` | `TEXT NOT NULL` | Vehicle make |
+| `model` | `TEXT NOT NULL` | Vehicle model |
+| `vin` | `TEXT` | Optional VIN |
+| `operability` | `TEXT NOT NULL` | `operable` or `inop` |
+| `created_at` | `TIMESTAMPTZ NOT NULL` | Insert timestamp |
+| `updated_at` | `TIMESTAMPTZ NOT NULL` | Last update timestamp |
 
 ## Future Evolution Path
 

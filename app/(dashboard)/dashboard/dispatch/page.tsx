@@ -1,7 +1,14 @@
 import type { Metadata } from "next";
 
 import { DispatchBoard } from "@/components/dashboard/dispatch-board";
-import { getLeadById, listDrivers, listLoads } from "@/lib/db";
+import {
+  getLeadById,
+  getLoadOpportunityById,
+  listDrivers,
+  listLoads,
+  listLoadVehicles,
+  listProblemFlags,
+} from "@/lib/db";
 import {
   buildDriverReviewEntries,
   buildLoadReviewEntries,
@@ -14,6 +21,7 @@ type DashboardDispatchPageProps = {
   searchParams?: Promise<{
     leadId?: string;
     driverId?: string;
+    opportunityId?: string;
     driverStatus?: string;
     driverQuery?: string;
     loadStatus?: string;
@@ -32,20 +40,28 @@ export default async function DashboardDispatchPage({
 }: DashboardDispatchPageProps) {
   let drivers = [];
   let loads = [];
+  let loadVehicles = [];
+  let problemFlags = [];
   let selectedLead = null;
+  let selectedOpportunity = null;
   let preselectedDriverId = null;
 
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const leadId = resolvedSearchParams?.leadId;
   const driverId = resolvedSearchParams?.driverId;
+  const opportunityId = resolvedSearchParams?.opportunityId;
   const filters = parseDispatchBoardFilters(resolvedSearchParams ?? {});
-  preselectedDriverId = driverId ?? null;
 
   try {
-    [drivers, loads, selectedLead] = await Promise.all([
+    [drivers, loads, loadVehicles, problemFlags, selectedLead, selectedOpportunity] = await Promise.all([
       listDrivers(),
       listLoads(),
+      listLoadVehicles(),
+      listProblemFlags(),
       leadId ? getLeadById(leadId) : Promise.resolve(null),
+      opportunityId
+        ? getLoadOpportunityById(opportunityId)
+        : Promise.resolve(null),
     ]);
   } catch (error) {
     console.error("[dashboard-dispatch] Failed to load dispatch board", error);
@@ -61,8 +77,8 @@ export default async function DashboardDispatchPage({
           </h1>
           <p className="max-w-2xl text-base leading-7 text-slate-600">
             The internal dispatch board could not read the current drivers or
-            loads. Check the latest repository logs and confirm the new
-            Supabase migration has been applied.
+            loads. Check the latest repository logs and confirm the latest
+            Supabase dispatch migrations have been applied.
           </p>
         </div>
 
@@ -75,19 +91,27 @@ export default async function DashboardDispatchPage({
     );
   }
 
+  preselectedDriverId =
+    driverId ?? selectedOpportunity?.assignedDriverId ?? null;
+
   const driverEntries = buildDriverReviewEntries(drivers, loads);
   const visibleDriverEntries = filterDriverReviewEntries(driverEntries, filters);
-  const loadEntries = buildLoadReviewEntries(loads, drivers);
+  const loadEntries = buildLoadReviewEntries(
+    loads,
+    drivers,
+    loadVehicles,
+    problemFlags,
+  );
   const visibleLoadEntries = filterLoadReviewEntries(loadEntries, filters);
 
   return (
     <DispatchBoard
       drivers={drivers}
-      loads={loads}
       driverEntries={visibleDriverEntries}
       loadEntries={visibleLoadEntries}
       filters={filters}
       selectedLead={selectedLead}
+      selectedOpportunity={selectedOpportunity}
       preselectedDriverId={preselectedDriverId}
     />
   );

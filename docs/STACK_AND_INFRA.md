@@ -45,6 +45,8 @@ That means:
 
 ### V2: Needed When CRM Work Starts
 
+- internal dashboard auth
+  - lightweight owner/dispatcher access to internal pages without exposing operations publicly.
 - `Resend`
   - Outbound transactional email for follow-ups, notifications, and CRM communication.
 - `Twilio`
@@ -107,6 +109,18 @@ Purpose:
 - stores structured leads now
 - grows into CRM and portal data later
 - can support auth later if we adopt Supabase Auth for dashboard/portal users
+
+### Internal Dashboard Auth
+
+Needed in:
+
+- `V2 dispatch-lite`
+
+Purpose:
+
+- protect internal leads, movement, and dispatch routes
+- give the owner and hired dispatcher separate credentials
+- stay lightweight until a fuller CRM or portal auth system is justified
 
 ### PostHog
 
@@ -214,6 +228,11 @@ Not required yet:
 
 ## V2 / V3 Environment Variables Later
 
+- `AUTH_SESSION_SECRET`
+- `OWNER_LOGIN_EMAIL`
+- `OWNER_LOGIN_PASSWORD`
+- `DISPATCHER_LOGIN_EMAIL`
+- `DISPATCHER_LOGIN_PASSWORD`
 - `RESEND_API_KEY`
 - `RESEND_FROM_EMAIL`
 - `TWILIO_ACCOUNT_SID`
@@ -234,6 +253,14 @@ Not required yet:
 - PostHog project created and keys added to Vercel
 - production domain connected in Vercel
 - DNS configured for `iDispatchLoads.com`
+
+### V2 dispatch-lite operational checklist
+
+- owner and dispatcher credentials added to Vercel
+- internal dashboard login tested on production
+- dispatch-lite migration applied
+- movement board migration applied
+- dispatcher-ready ops migration applied
 
 ## Observability and Analytics
 

@@ -2,6 +2,7 @@ import { getDatabase } from "@/lib/db/client";
 import type {
   Driver,
   DriverCreateInput,
+  DriverMovementUpdateInput,
   DriverNotesUpdateInput,
   DriverRow,
   DriverStatus,
@@ -15,8 +16,15 @@ function mapDriverRow(row: DriverRow): Driver {
     driverName: row.driver_name,
     phone: row.phone,
     truckType: row.truck_type,
+    truckUnitNumber: row.truck_unit_number,
+    truckVin: row.truck_vin,
+    trailerUnitNumber: row.trailer_unit_number,
+    trailerVin: row.trailer_vin,
     preferredLanes: row.preferred_lanes,
     homeBase: row.home_base,
+    currentLocation: row.current_location,
+    availableFrom: row.available_from,
+    capacity: row.capacity,
     status: row.status,
     notes: row.notes,
     createdAt: row.created_at,
@@ -35,8 +43,15 @@ export async function createDriver(input: DriverCreateInput): Promise<Driver> {
       driver_name: input.driverName,
       phone: input.phone,
       truck_type: input.truckType,
+      truck_unit_number: input.truckUnitNumber,
+      truck_vin: input.truckVin,
+      trailer_unit_number: input.trailerUnitNumber,
+      trailer_vin: input.trailerVin,
       ...(input.preferredLanes ? { preferred_lanes: input.preferredLanes } : {}),
       home_base: input.homeBase,
+      current_location: input.currentLocation,
+      available_from: input.availableFrom,
+      capacity: input.capacity,
       status: input.status,
       notes: input.notes,
     })
@@ -222,6 +237,58 @@ export async function updateDriverNotes(
     });
 
     throw new Error("Unable to update driver notes: update returned no row.");
+  }
+
+  return mapDriverRow(data as DriverRow);
+}
+
+export async function updateDriverMovement(
+  input: DriverMovementUpdateInput,
+): Promise<Driver> {
+  const db = getDatabase();
+  const { data, error } = await db
+    .from("drivers")
+    .update({
+      truck_unit_number: input.truckUnitNumber,
+      truck_vin: input.truckVin,
+      trailer_unit_number: input.trailerUnitNumber,
+      trailer_vin: input.trailerVin,
+      current_location: input.currentLocation,
+      available_from: input.availableFrom,
+      capacity: input.capacity,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", input.driverId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("[driver-repository] Supabase movement update failed", {
+      table: "drivers",
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      payload: {
+        driverId: input.driverId,
+      },
+    });
+
+    throw new Error(`Unable to update driver movement: ${error.message}`);
+  }
+
+  if (!data) {
+    console.error(
+      "[driver-repository] Supabase movement update returned no row",
+      {
+        table: "drivers",
+        payload: {
+          driverId: input.driverId,
+        },
+      },
+    );
+
+    throw new Error("Unable to update driver movement: update returned no row.");
   }
 
   return mapDriverRow(data as DriverRow);

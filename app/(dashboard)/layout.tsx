@@ -2,6 +2,9 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
+import { logoutAction } from "@/app/(dashboard)/actions/logout";
+import { requireDashboardSession } from "@/lib/auth";
+
 type DashboardLayoutProps = {
   children: ReactNode;
 };
@@ -13,10 +16,13 @@ export const metadata: Metadata = {
   },
 };
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: DashboardLayoutProps) {
+  const session = await requireDashboardSession();
   const navItems = [
+    { href: "/dashboard", label: "Dashboard" },
+    { href: "/dashboard/movement", label: "Movement" },
     { href: "/dashboard/leads", label: "Leads" },
     { href: "/dashboard/dispatch", label: "Dispatch" },
   ];
@@ -35,6 +41,11 @@ export default function DashboardLayout({
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            <div className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-600">
+              <span className="font-semibold text-slate-900">{session.roleLabel}</span>{" "}
+              <span className="text-slate-500">• {session.email}</span>
+            </div>
+
             <nav className="flex flex-wrap gap-2">
               {navItems.map((item) => (
                 <Link
@@ -53,6 +64,15 @@ export default function DashboardLayout({
             >
               Public site
             </Link>
+
+            <form action={logoutAction}>
+              <button
+                type="submit"
+                className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+              >
+                Sign out
+              </button>
+            </form>
           </div>
         </div>
       </header>
