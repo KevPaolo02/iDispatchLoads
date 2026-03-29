@@ -3,15 +3,22 @@ import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/lib/types";
-import { getRequiredEnv } from "@/lib/utils";
+import { getOptionalEnv, getRequiredEnv } from "@/lib/utils";
 
 type GlobalDatabase = typeof globalThis & {
   __idispatchloadsDb?: SupabaseClient<Database>;
 };
 
 function createDatabaseClient() {
-  const url = getRequiredEnv("SUPABASE_URL");
+  const url =
+    getOptionalEnv("SUPABASE_URL") ?? getOptionalEnv("NEXT_PUBLIC_SUPABASE_URL");
   const serviceRoleKey = getRequiredEnv("SUPABASE_SERVICE_ROLE_KEY");
+
+  if (!url) {
+    throw new Error(
+      "Missing Supabase URL. Set SUPABASE_URL in Vercel. NEXT_PUBLIC_SUPABASE_URL is accepted as a safe fallback for the project URL.",
+    );
+  }
 
   return createClient<Database>(url, serviceRoleKey, {
     auth: {

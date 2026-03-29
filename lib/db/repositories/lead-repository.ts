@@ -1,5 +1,11 @@
 import { getDatabase } from "@/lib/db/client";
-import type { Lead, LeadCreateInput, LeadRow } from "@/lib/types";
+import type {
+  Lead,
+  LeadActivityUpdateInput,
+  LeadCreateInput,
+  LeadNotesUpdateInput,
+  LeadRow,
+} from "@/lib/types";
 
 function mapLeadRow(row: LeadRow): Lead {
   return {
@@ -14,6 +20,7 @@ function mapLeadRow(row: LeadRow): Lead {
     status: row.status,
     source: row.source,
     campaign: row.campaign,
+    lastContactedAt: row.last_contacted_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -99,9 +106,149 @@ export async function listLeads(): Promise<Lead[]> {
     .select("*")
     .order("created_at", { ascending: false });
 
-  if (error || !data) {
-    throw new Error(error?.message ?? "Unable to list leads.");
+  if (error) {
+    console.error("[lead-repository] Supabase list failed", {
+      table: "leads",
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    });
+
+    throw new Error(`Unable to list leads: ${error.message}`);
+  }
+
+  if (!data) {
+    console.error("[lead-repository] Supabase list returned no rows", {
+      table: "leads",
+    });
+
+    throw new Error("Unable to list leads: query returned no rows.");
   }
 
   return data.map((row) => mapLeadRow(row as LeadRow));
+}
+
+export async function getLeadById(leadId: string): Promise<Lead | null> {
+  const db = getDatabase();
+  const { data, error } = await db
+    .from("leads")
+    .select("*")
+    .eq("id", leadId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[lead-repository] Supabase get by id failed", {
+      table: "leads",
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      payload: {
+        leadId,
+      },
+    });
+
+    throw new Error(`Unable to load lead: ${error.message}`);
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  return mapLeadRow(data as LeadRow);
+}
+
+export async function updateLeadActivity(
+  input: LeadActivityUpdateInput,
+): Promise<Lead> {
+  const db = getDatabase();
+  const { data, error } = await db
+    .from("leads")
+    .update({
+      status: input.status,
+      ...(Object.prototype.hasOwnProperty.call(input, "notes")
+        ? { notes: input.notes ?? null }
+        : {}),
+      ...(input.lastContactedAt
+        ? { last_contacted_at: input.lastContactedAt }
+        : {}),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", input.leadId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("[lead-repository] Supabase activity update failed", {
+      table: "leads",
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      payload: {
+        leadId: input.leadId,
+        status: input.status,
+      },
+    });
+
+    throw new Error(`Unable to update lead: ${error.message}`);
+  }
+
+  if (!data) {
+    console.error("[lead-repository] Supabase activity update returned no row", {
+      table: "leads",
+      payload: {
+        leadId: input.leadId,
+        status: input.status,
+      },
+    });
+
+    throw new Error("Unable to update lead: update returned no row.");
+  }
+
+  return mapLeadRow(data as LeadRow);
+}
+
+export async function updateLeadNotes(
+  input: LeadNotesUpdateInput,
+): Promise<Lead> {
+  const db = getDatabase();
+  const { data, error } = await db
+    .from("leads")
+    .update({
+      notes: input.notes,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", input.leadId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("[lead-repository] Supabase notes update failed", {
+      table: "leads",
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      payload: {
+        leadId: input.leadId,
+      },
+    });
+
+    throw new Error(`Unable to update lead notes: ${error.message}`);
+  }
+
+  if (!data) {
+    console.error("[lead-repository] Supabase notes update returned no row", {
+      table: "leads",
+      payload: {
+        leadId: input.leadId,
+      },
+    });
+
+    throw new Error("Unable to update lead notes: update returned no row.");
+  }
+
+  return mapLeadRow(data as LeadRow);
 }

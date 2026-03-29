@@ -6,6 +6,24 @@ export const leadStatuses = [
   "onboarded",
   "lost",
 ] as const;
+export const v1LeadStatuses = [
+  "new",
+  "contacted",
+  "qualified",
+  "lost",
+] as const;
+export const driverStatuses = [
+  "available",
+  "assigned",
+  "in_transit",
+] as const;
+export const dispatchLoadStatuses = [
+  "searching",
+  "booked",
+  "dispatched",
+  "picked_up",
+  "delivered",
+] as const;
 export const partyStatuses = ["prospect", "active", "inactive"] as const;
 export const loadStatuses = [
   "available",
@@ -41,6 +59,9 @@ export const relatedEntityTypes = [
 
 export type UserRole = (typeof userRoles)[number];
 export type LeadStatus = (typeof leadStatuses)[number];
+export type V1LeadStatus = (typeof v1LeadStatuses)[number];
+export type DriverStatus = (typeof driverStatuses)[number];
+export type DispatchLoadStatus = (typeof dispatchLoadStatuses)[number];
 export type PartyStatus = (typeof partyStatuses)[number];
 export type LoadStatus = (typeof loadStatuses)[number];
 export type DocumentStatus = (typeof documentStatuses)[number];
@@ -79,6 +100,7 @@ export interface Lead extends BaseEntity {
   status: LeadStatus;
   source: string;
   campaign: string | null;
+  lastContactedAt: string | null;
 }
 
 export interface Carrier extends BaseEntity {
@@ -95,14 +117,13 @@ export interface Carrier extends BaseEntity {
 
 export interface Driver extends BaseEntity {
   sourceLeadId: string | null;
-  carrierId: string | null;
-  firstName: string;
-  lastName: string;
-  phone: string | null;
-  email: string | null;
-  truckType: string | null;
+  company: string;
+  driverName: string;
+  phone: string;
+  truckType: string;
   preferredLanes: string | null;
-  status: PartyStatus;
+  homeBase: string;
+  status: DriverStatus;
   notes: string | null;
 }
 
@@ -125,14 +146,16 @@ export interface Broker extends BaseEntity {
 }
 
 export interface Load extends BaseEntity {
-  brokerId: string | null;
-  carrierId: string | null;
   driverId: string | null;
-  truckId: string | null;
+  sourceLeadId: string | null;
+  company: string;
   origin: string;
   destination: string;
+  pickupDate: string | null;
+  deliveryDate: string | null;
+  broker: string;
   rate: number | null;
-  status: LoadStatus;
+  status: DispatchLoadStatus;
   notes: string | null;
 }
 

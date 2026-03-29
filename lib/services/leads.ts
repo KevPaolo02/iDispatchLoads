@@ -1,11 +1,20 @@
-import { createLead } from "@/lib/db";
+import {
+  createLead,
+  getLeadById,
+  updateLeadActivity as updateLeadActivityRecord,
+  updateLeadNotes as updateLeadNotesRecord,
+} from "@/lib/db";
 import type {
+  LeadActivityUpdateInput,
   LeadCreateInput,
   LeadFormErrors,
   LeadFormValues,
+  LeadStatus,
+  LeadNotesUpdateInput,
   LeadSubmissionState,
 } from "@/lib/types";
 import { captureServerAnalyticsEvent } from "@/lib/services/analytics";
+import { notifyOnLeadCreated } from "@/lib/services/speed-to-lead";
 import {
   normalizeEmail,
   normalizeOptionalText,
@@ -13,6 +22,7 @@ import {
   normalizeText,
 } from "@/lib/utils";
 import { z } from "zod";
+import { leadStatuses } from "@/lib/types";
 
 const leadCaptureSchema = z.object({
   firstName: z
@@ -45,6 +55,19 @@ const leadCaptureSchema = z.object({
   status: z.enum(["new", "contacted", "qualified", "onboarded", "lost"]),
   source: z.string().min(1).max(120),
   campaign: z.string().max(160).nullable(),
+});
+
+const leadStatusUpdateSchema = z.object({
+  leadId: z.string().uuid("Invalid lead id."),
+  status: z.enum(leadStatuses),
+});
+
+const leadNotesUpdateSchema = z.object({
+  leadId: z.string().uuid("Invalid lead id."),
+  notes: z
+    .string()
+    .max(1000, "Notes must be under 1,000 characters.")
+    .nullable(),
 });
 
 function mapInputToValues(input: LeadCreateInput): LeadFormValues {
@@ -119,6 +142,81 @@ export function hasLeadValidationErrors(fieldErrors: LeadFormErrors) {
   return Object.keys(fieldErrors).length > 0;
 }
 
+export async function updateLeadStatusFromFormData(formData: FormData) {
+  const validation = leadStatusUpdateSchema.safeParse({
+    leadId: normalizeText(formData.get("leadId")),
+    status: normalizeText(formData.get("status")),
+  });
+
+  if (!validation.success) {
+    console.error("[lead-status-update] Invalid status update request", {
+      issues: validation.error.flatten().fieldErrors,
+    });
+
+    throw new Error("Invalid lead status update request.");
+  }
+
+  const input: {
+    leadId: string;
+    status: LeadStatus;
+  } = validation.data;
+
+  try {
+    const existingLead = await getLeadById(input.leadId);
+
+    if (!existingLead) {
+      throw new Error("Lead not found.");
+    }
+
+    const updateInput: LeadActivityUpdateInput = {
+      leadId: input.leadId,
+      status: input.status,
+      ...(input.status !== "new"
+        ? { lastContactedAt: new Date().toISOString() }
+        : {}),
+    };
+
+    await updateLeadActivityRecord(updateInput);
+  } catch (error) {
+    console.error("[lead-status-update] Failed to update lead", {
+      error: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined,
+      leadContext: input,
+    });
+
+    throw error;
+  }
+}
+
+export async function updateLeadNotesFromFormData(formData: FormData) {
+  const validation = leadNotesUpdateSchema.safeParse({
+    leadId: normalizeText(formData.get("leadId")),
+    notes: normalizeOptionalText(formData.get("notes")),
+  });
+
+  if (!validation.success) {
+    console.error("[lead-notes-update] Invalid notes update request", {
+      issues: validation.error.flatten().fieldErrors,
+    });
+
+    throw new Error("Invalid lead notes update request.");
+  }
+
+  const input: LeadNotesUpdateInput = validation.data;
+
+  try {
+    await updateLeadNotesRecord(input);
+  } catch (error) {
+    console.error("[lead-notes-update] Failed to update lead notes", {
+      error: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined,
+      leadContext: input,
+    });
+
+    throw error;
+  }
+}
+
 export async function captureLeadFromFormData(formData: FormData): Promise<LeadSubmissionState> {
   const leadInput = extractLeadInput(formData);
   const fieldErrors = validateLeadInput(leadInput);
@@ -136,17 +234,20 @@ export async function captureLeadFromFormData(formData: FormData): Promise<LeadS
   try {
     const lead = await createLead(leadInput);
 
-    await captureServerAnalyticsEvent({
-      event: "lead_form_submitted",
-      distinctId: lead.email,
-      properties: {
-        leadId: lead.id,
-        truckType: lead.truckType,
-        source: lead.source,
-        campaign: lead.campaign,
-        status: lead.status,
-      },
-    });
+    await Promise.allSettled([
+      captureServerAnalyticsEvent({
+        event: "lead_form_submitted",
+        distinctId: lead.email,
+        properties: {
+          leadId: lead.id,
+          truckType: lead.truckType,
+          source: lead.source,
+          campaign: lead.campaign,
+          status: lead.status,
+        },
+      }),
+      notifyOnLeadCreated(lead),
+    ]);
 
     return {
       status: "success",

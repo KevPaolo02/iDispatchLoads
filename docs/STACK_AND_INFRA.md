@@ -50,6 +50,13 @@ That means:
 - `Twilio`
   - SMS and voice workflows for dispatch communication and follow-up.
 
+### V1: Operationally Useful Now
+
+- `Resend`
+  - Optional immediate email alert for new lead creation.
+- `Twilio`
+  - Optional immediate SMS alert for new lead creation.
+
 ### V3: Needed Later
 
 - `Stripe`
@@ -191,20 +198,22 @@ Not required yet:
 
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
+- `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_POSTHOG_KEY`
 - `NEXT_PUBLIC_POSTHOG_HOST`
 
 ### Recommended for V1 observability
 
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `POSTHOG_API_KEY`
 - `POSTHOG_HOST`
 - `SENTRY_DSN`
 - `NEXT_PUBLIC_SENTRY_DSN`
+- `LEAD_ALERT_EMAIL_TO`
+- `LEAD_ALERT_SMS_TO`
 
 ## V2 / V3 Environment Variables Later
 
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `RESEND_API_KEY`
 - `RESEND_FROM_EMAIL`
 - `TWILIO_ACCOUNT_SID`

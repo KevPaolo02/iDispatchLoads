@@ -37,8 +37,59 @@ This is the only persisted business table in V1 right now.
 | `status` | `TEXT NOT NULL` | `new`, `contacted`, `qualified`, `onboarded`, `lost` |
 | `source` | `TEXT NOT NULL` | Traffic source like `website` or `google` |
 | `campaign` | `TEXT` | Optional campaign marker like `spring-owner-ops` |
+| `last_contacted_at` | `TIMESTAMPTZ` | Lightweight last-touch marker |
 | `created_at` | `TEXT NOT NULL` | ISO timestamp |
 | `updated_at` | `TEXT NOT NULL` | ISO timestamp |
+
+## Dispatch Lite Tables
+
+The current V2 dispatch-lite layer adds two operational tables without jumping
+to full CRM or TMS scope.
+
+Migration:
+
+- [20260328194000_dispatch_lite.sql](/Users/kevincastrillonmiranda/idispatchloads/supabase/migrations/20260328194000_dispatch_lite.sql)
+
+### `drivers`
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `id` | `UUID PRIMARY KEY` | Stable UUID |
+| `source_lead_id` | `UUID NULL` | Optional source lead for traceability |
+| `company` | `TEXT NOT NULL` | Fleet or company name |
+| `driver_name` | `TEXT NOT NULL` | Driver display name |
+| `phone` | `TEXT NOT NULL` | Contact number |
+| `truck_type` | `TEXT NOT NULL` | Equipment or truck type |
+| `preferred_lanes` | `TEXT` | Copied from lead when useful |
+| `home_base` | `TEXT NOT NULL` | Base city or region |
+| `status` | `TEXT NOT NULL` | `available`, `assigned`, `in_transit` |
+| `notes` | `TEXT` | Optional notes |
+| `created_at` | `TIMESTAMPTZ NOT NULL` | Insert timestamp |
+| `updated_at` | `TIMESTAMPTZ NOT NULL` | Last update timestamp |
+
+### `loads`
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `id` | `UUID PRIMARY KEY` | Stable UUID |
+| `driver_id` | `UUID NULL` | Optional assigned driver |
+| `source_lead_id` | `UUID NULL` | Optional originating lead |
+| `company` | `TEXT NOT NULL` | Customer / company |
+| `origin` | `TEXT NOT NULL` | Origin |
+| `destination` | `TEXT NOT NULL` | Destination |
+| `pickup_date` | `TIMESTAMPTZ` | Planned pickup |
+| `delivery_date` | `TIMESTAMPTZ` | Planned delivery |
+| `broker` | `TEXT NOT NULL` | Broker name |
+| `rate` | `NUMERIC(10,2)` | Rate |
+| `status` | `TEXT NOT NULL` | `searching`, `booked`, `dispatched`, `picked_up`, `delivered` |
+| `notes` | `TEXT` | Optional notes |
+| `created_at` | `TIMESTAMPTZ NOT NULL` | Insert timestamp |
+| `updated_at` | `TIMESTAMPTZ NOT NULL` | Last update timestamp |
+
+Additional migration for lightweight activity tracking and lead-to-load traceability:
+
+- [20260328203000_lead_activity_and_load_source.sql](/Users/kevincastrillonmiranda/idispatchloads/supabase/migrations/20260328203000_lead_activity_and_load_source.sql)
+- [20260328212000_driver_source_lead_and_lanes.sql](/Users/kevincastrillonmiranda/idispatchloads/supabase/migrations/20260328212000_driver_source_lead_and_lanes.sql)
 
 ## Future Evolution Path
 
