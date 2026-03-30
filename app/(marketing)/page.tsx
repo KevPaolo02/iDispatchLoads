@@ -1,16 +1,19 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { ContactForm } from "@/components/marketing/contact-form";
 import { HeroEs } from "@/components/marketing/hero-es";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { SectionShell } from "@/components/shared/section-shell";
+import { buildWhatsAppHref } from "@/lib/utils";
 
 export const metadata: Metadata = {
-  title: "Dispatch en Español para Conductores que Trabajan NY, NJ, CT y PA",
+  title: "Dispatch en Español por WhatsApp para Conductores de NY, NJ, CT y PA",
   description:
-    "Servicios de dispatch en español para conductores y dueños-operadores que trabajan desde, por, o hacia New York, New Jersey, Connecticut y Pennsylvania. Ahorra tiempo, consigue mejores tarifas y mantente en movimiento.",
+    "Dispatch en español por WhatsApp para conductores y dueños-operadores que corren NY, NJ, CT y PA. Más cargas, menos tiempo muerto y respuesta rápida el mismo día.",
   keywords: [
     "dispatch en español para troqueros",
+    "dispatch por whatsapp en español",
     "dispatch para conductores en new york",
     "dispatch para conductores en new jersey",
     "dispatch en español connecticut",
@@ -27,9 +30,9 @@ export const metadata: Metadata = {
   },
   category: "Transportation",
   openGraph: {
-    title: "Dispatch en Español para Conductores que Trabajan NY, NJ, CT y PA",
+    title: "Dispatch en Español por WhatsApp para Conductores de NY, NJ, CT y PA",
     description:
-      "Ayudamos a conductores y dueños-operadores a conseguir mejores cargas y mantenerse en movimiento en el corredor del noreste.",
+      "Ayudamos a conductores y dueños-operadores a conseguir más cargas, negociar mejor y mantenerse en movimiento en el corredor del noreste.",
     url: "https://idispatchloads.com",
     locale: "es_US",
     images: [
@@ -42,108 +45,79 @@ export const metadata: Metadata = {
     ],
   },
   twitter: {
-    title: "Dispatch en Español para Conductores que Trabajan NY, NJ, CT y PA",
+    title: "Dispatch en Español por WhatsApp para Conductores de NY, NJ, CT y PA",
     description:
-      "Dispatch en español para conductores que corren NY, NJ, CT y PA.",
+      "Más cargas, menos tiempo muerto y respuesta por WhatsApp para conductores del noreste.",
     images: ["/twitter-image"],
   },
 };
 
 const services = [
   {
-    title: "Búsqueda y Reserva de Cargas",
+    title: "Búsqueda con Criterio",
     description:
-      "Buscamos y filtramos cargas que sí tengan sentido para tus rutas del noreste para que no pierdas el día revisando publicaciones que no te convienen.",
+      "No te llenamos la semana con cualquier cosa. Buscamos movimientos que sí tengan sentido para tu equipo, tu base y tus rutas del noreste.",
   },
   {
-    title: "Negociación de Tarifas",
+    title: "Filtro de Brokers",
     description:
-      "Negociamos pensando en tu ingreso para que no aceptes cargas flojas en New York, New Jersey, Connecticut y Pennsylvania.",
+      "Filtramos brokers, tiempos muertos y cargas flojas. La idea no es sonar ocupados. La idea es que tu semana deje más dinero y menos desgaste.",
   },
   {
-    title: "Comunicación con Brokers",
+    title: "Negociación con Sentido",
     description:
-      "Nos encargamos de llamadas, seguimiento y confirmaciones con brokers para que tú te enfoques en manejar y entregar.",
+      "Negociamos pensando en tu ingreso, tu continuidad y el siguiente movimiento, no solo en cerrar la primera carga que aparezca.",
   },
   {
-    title: "Orden y Papelería",
+    title: "Seguimiento por WhatsApp",
     description:
-      "Mantenemos confirmaciones de tarifa y detalles del dispatch organizados para que cada carga salga más clara y con menos estrés.",
+      "Mantenemos la comunicación clara por WhatsApp para que sepas qué sigue, qué se movió y dónde está el próximo paso sin perseguir a nadie.",
   },
-];
-
-const benefits = [
-  "Ahorra tiempo dejando de brincar entre load boards, llamadas y mensajes todo el día.",
-  "Consigue mejores tarifas con alguien peleando por tus números en cargas del corredor NY, NJ, CT y PA.",
-  "Mantente con movimiento más constante en la zona donde realmente trabajas, no con viajes al azar.",
 ];
 
 const steps = [
   {
     step: "01",
-    title: "Cuéntanos Cómo Trabajas",
+    title: "Nos Escribes y Revisamos Fit",
     description:
-      "Dinos qué equipo manejas, dónde sales y qué zonas prefieres trabajar dentro del corredor del noreste.",
+      "Nos mandas tu información o nos escribes por WhatsApp. Revisamos tu equipo, base y rutas para decirte rápido si tu operación encaja con nuestro enfoque.",
   },
   {
     step: "02",
-    title: "Buscamos Cargas Que Sí Te Sirven",
+    title: "Tomamos Búsqueda, Filtro y Negociación",
     description:
-      "Filtramos cargas, hablamos con brokers y buscamos mejores opciones para tus rutas en NY, NJ, CT y PA.",
+      "Buscamos cargas, filtramos brokers, negociamos tarifas y organizamos el movimiento con una lógica clara para que no sigas resolviendo todo tú solo.",
   },
   {
     step: "03",
-    title: "Tú Manejas, Nosotros Movemos el Dispatch",
+    title: "Seguimos la Operación y el Siguiente Paso",
     description:
-      "Mientras tú recoges y entregas, nosotros seguimos pendientes de la siguiente carga para ayudarte a mantenerte en movimiento.",
+      "Mientras tú manejas, damos seguimiento por WhatsApp, cuidamos detalles operativos y trabajamos el próximo movimiento para reducir tiempos muertos.",
   },
 ];
 
 const trustSignals = [
   {
-    title: "Enfoque Real en el Noreste",
+    title: "WhatsApp Directo, No Call Center",
     description:
-      "No estamos tratando de trabajar todos los estados del país. Buscamos conductores que sí corren el área de NY, NJ, CT y PA.",
+      "Este servicio está pensado para conductores que prefieren resolver rápido. Puedes escribir directo, hablar con una persona real y saber hoy mismo si hay fit.",
   },
   {
-    title: "Soporte Directo de Dispatch",
+    title: "No Te Hacemos Perder Tiempo",
     description:
-      "Tienes un equipo atendiendo brokers, negociando tarifas y cuidando detalles operativos que normalmente te quitan tiempo.",
+      "Si tu operación no encaja, te lo decimos. Si sí encaja, pasamos al siguiente paso sin vueltas, sin proceso inflado y sin venderte humo.",
   },
   {
-    title: "Proceso Claro Desde el Inicio",
+    title: "Dispatcher Asignado y Seguimiento",
     description:
-      "Pedimos el tipo de camión, rutas preferidas y datos de contacto desde el inicio para saber rápido si eres una buena opción.",
+      "No se siente como un favor aislado. Se siente como una operación con seguimiento diario, comunicación clara y alguien pendiente del movimiento.",
   },
 ];
 
 const fitPoints = [
   "Trabajas desde, por, o hacia New York, New Jersey, Connecticut o Pennsylvania.",
-  "Quieres dejar de vivir pegado al teléfono buscando la próxima carga.",
-  "Quieres ayuda de dispatch para mantenerte más cargado y con mejores tarifas en el noreste.",
-];
-
-const serviceAreas = [
-  {
-    title: "Apoyo para Rutas de New York",
-    description:
-      "Trabajamos con conductores que entran, salen o cruzan New York y necesitan mejor organización, mejores tarifas y menos tiempo perdido.",
-  },
-  {
-    title: "Apoyo para Rutas de New Jersey",
-    description:
-      "Ayudamos a conductores que corren cargas en New Jersey a mantenerse más organizados y mejor negociados.",
-  },
-  {
-    title: "Apoyo para Rutas de Connecticut",
-    description:
-      "Si tus rutas tocan Connecticut, buscamos cargas más consistentes y una planificación más práctica.",
-  },
-  {
-    title: "Apoyo para Rutas de Pennsylvania",
-    description:
-      "Apoyamos cargas de Pennsylvania con mejor planificación, mejor selección de cargas y más consistencia operativa.",
-  },
+  "Prefieres resolver por WhatsApp y saber rápido si esto vale la pena para tu operación.",
+  "No quieres seguir corriendo cargas flojas solo por llenar la semana.",
 ];
 
 const pricingOptions = [
@@ -159,12 +133,24 @@ const pricingOptions = [
   },
 ];
 
+const weeklyExample = [
+  { label: "Cargas trabajadas", value: "4" },
+  { label: "Bruto semanal", value: "$7,800" },
+  { label: "Fee de dispatch", value: "$780" },
+  { label: "Neto estimado", value: "$7,020" },
+];
+
 const faqs = [
   {
     question:
       "¿Con qué tipo de conductores trabaja iDispatchLoads.com en NY, NJ, CT y PA?",
     answer:
-      "Nos enfocamos en conductores, dueños-operadores y pequeñas flotillas que trabajan desde, por, o hacia New York, New Jersey, Connecticut y Pennsylvania. El mejor fit es alguien que quiere cargas más consistentes y menos tiempo perdido hablando con brokers.",
+      "Nos enfocamos en conductores, dueños-operadores y pequeñas flotillas que corren desde, por, o hacia New York, New Jersey, Connecticut y Pennsylvania. El mejor fit es alguien que quiere más continuidad, menos tiempo perdido y comunicación directa.",
+  },
+  {
+    question: "¿Por qué enfocarse solo en NY, NJ, CT y PA me beneficia?",
+    answer:
+      "Porque ese enfoque permite trabajar con más criterio. En lugar de correr cualquier cosa en cualquier estado, buscamos mejores decisiones, más continuidad y menos vueltas inútiles dentro del corredor que tú realmente trabajas.",
   },
   {
     question: "¿Solo trabajan rutas del noreste?",
@@ -174,7 +160,7 @@ const faqs = [
   {
     question: "¿Cómo me ayuda este servicio de dispatch a ahorrar tiempo?",
     answer:
-      "Nos encargamos de buscar cargas, hablar con brokers, negociar tarifas y organizar el dispatch para que tú no pases el día entero persiguiendo la próxima carga.",
+      "Nos encargamos de buscar cargas, hablar con brokers, negociar tarifas y organizar el dispatch para que tú no pases el día entero persiguiendo la próxima carga ni esperando respuestas lentas.",
   },
   {
     question: "¿De verdad me pueden ayudar a conseguir mejores tarifas?",
@@ -184,16 +170,20 @@ const faqs = [
   {
     question: "¿Qué información necesito para empezar?",
     answer:
-      "Para calificar rápido necesitamos tu nombre, teléfono, correo, tipo de camión o tráiler y las rutas que prefieres correr en el noreste. Eso nos ayuda a saber si tu operación encaja bien.",
+      "Para calificar rápido necesitamos tu nombre, teléfono, correo, tipo de camión o tráiler y las rutas que prefieres correr en el noreste. Con eso podemos decirte rápido si tu operación encaja.",
   },
   {
     question: "¿Cuánto cobra iDispatchLoads.com?",
     answer:
-      "Trabajamos con dos estructuras simples: porcentaje por carga o una tarifa semanal. La mejor opción depende de cómo prefieras manejar el costo de dispatch en tu operación.",
+      "Trabajamos con dos estructuras simples: porcentaje por carga o una tarifa semanal. La mejor opción depende de cómo prefieras manejar el costo de dispatch en tu operación y te la explicamos directo, sin tabla complicada.",
   },
 ];
 
 export default function Home() {
+  const whatsAppHref = buildWhatsAppHref(
+    process.env.NEXT_PUBLIC_WHATSAPP_NUMBER,
+    "Hola, quiero revisar mi operación con iDispatchLoads. Corro rutas en NY / NJ / CT / PA y quiero hablar por WhatsApp.",
+  );
   const structuredData = [
     {
       "@context": "https://schema.org",
@@ -257,11 +247,50 @@ export default function Home() {
       />
       <HeroEs />
 
+      <SectionShell id="cierre-rapido" tone="brand" className="py-12 sm:py-14">
+        <div className="grid gap-6 rounded-[2rem] border border-slate-200 bg-white p-8 shadow-[0_18px_50px_-35px_rgba(15,23,42,0.35)] lg:grid-cols-[1fr_auto] lg:items-center">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--color-primary)]">
+              Cierre Rápido
+            </p>
+            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">
+              Si prefieres cerrar rápido, escríbenos por WhatsApp primero.
+            </h2>
+            <p className="mt-4 max-w-3xl text-lg leading-8 text-slate-600">
+              Para este tipo de operación, WhatsApp suele cerrar más rápido que
+              correo. Te respondemos, revisamos fit y te decimos hoy mismo si
+              tiene sentido avanzar.
+            </p>
+          </div>
+          <div className="flex flex-col gap-3">
+            {whatsAppHref ? (
+              <a
+                href={whatsAppHref}
+                target="_blank"
+                rel="noreferrer"
+                data-analytics-event="cta_clicked"
+                data-analytics-label="Escribir por WhatsApp"
+                data-analytics-location="quick-close-band"
+                className="inline-flex items-center justify-center rounded-full bg-emerald-500 px-7 py-3.5 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400"
+              >
+                Escríbenos y Revisa Tu Fit
+              </a>
+            ) : null}
+            <Link
+              href="/#contacto"
+              className="inline-flex items-center justify-center rounded-full border border-slate-200 px-7 py-3.5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+            >
+              Llenar Formulario
+            </Link>
+          </div>
+        </div>
+      </SectionShell>
+
       <SectionShell id="servicios" tone="light">
         <SectionHeading
-          eyebrow="Servicios"
-          title="Dispatch en español para conductores que de verdad mueven el noreste."
-          description="Si trabajas en NY, NJ, CT y PA y todavía estás perdiendo horas revisando load boards y llamando brokers, estás perdiendo tiempo y dejando dinero sobre la mesa."
+          eyebrow="Qué Resolvemos"
+          title="Lo que hacemos mejor para una operación que corre NY, NJ, CT y PA."
+          description="Si todavía estás resolviendo todo tú solo entre load boards, brokers y seguimiento, el problema no es solo tiempo. También es dinero mal negociado, continuidad mal trabajada y demasiada fricción diaria."
         />
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
           {services.map((service) => (
@@ -281,32 +310,69 @@ export default function Home() {
         </div>
       </SectionShell>
 
-      <SectionShell id="beneficios" tone="dark">
-        <div className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.28em] text-cyan-300">
-              Beneficios
+      <SectionShell id="confianza" tone="dark">
+        <SectionHeading
+          eyebrow="Por Qué Confiar"
+          title="La confianza no se gana con palabras suaves. Se gana con claridad."
+          description="Para un conductor escéptico, lo más importante es sentir que aquí hay criterio, velocidad y una forma seria de trabajar."
+        />
+        <div className="grid gap-6 md:grid-cols-3">
+          <article className="rounded-3xl border border-white/10 bg-white/5 p-7 backdrop-blur-sm">
+            <h3 className="text-xl font-semibold text-white">
+              Solo NY / NJ / CT / PA
+            </h3>
+            <p className="mt-3 text-sm leading-7 text-slate-300">
+              Nos enfocamos en el corredor donde sí quieres producir. Eso nos
+              permite filtrar mejor y decidir más rápido.
             </p>
-            <h2 className="mt-4 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-              Más manejo. Menos llamadas. Mejores cargas.
+          </article>
+          <article className="rounded-3xl border border-white/10 bg-white/5 p-7 backdrop-blur-sm">
+            <h3 className="text-xl font-semibold text-white">
+              Comunicación directa por WhatsApp
+            </h3>
+            <p className="mt-3 text-sm leading-7 text-slate-300">
+              No te mandamos a esperar un correo genérico. Hablas con una
+              persona real y sabes rápido si hay fit o no.
+            </p>
+          </article>
+          <article className="rounded-3xl border border-white/10 bg-white/5 p-7 backdrop-blur-sm">
+            <h3 className="text-xl font-semibold text-white">
+              Sin vueltas si no encaja
+            </h3>
+            <p className="mt-3 text-sm leading-7 text-slate-300">
+              Si tu operación no encaja, te lo decimos. Si sí encaja, pasamos
+              al siguiente paso sin inflar el proceso.
+            </p>
+          </article>
+        </div>
+      </SectionShell>
+
+      <SectionShell id="ejemplo-semana" tone="brand">
+        <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[var(--color-primary)]">
+              Ejemplo de Semana
+            </p>
+            <h2 className="mt-4 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
+              Un conductor piensa en bruto semanal. Así es como debes vender el valor.
             </h2>
-            <p className="mt-4 max-w-xl text-lg leading-8 text-slate-300">
-              Nuestro servicio está pensado para conductores que quieren proteger
-              su tiempo, mejorar sus números y mantenerse con cargas más
-              constantes dentro del corredor del noreste.
+            <p className="mt-4 text-lg leading-8 text-slate-600">
+              No basta con decir “buscamos cargas”. Un conductor escéptico quiere
+              visualizar qué cambia en su semana. Este bloque convierte mejor
+              porque habla en dinero, no en promesas abstractas.
             </p>
           </div>
-          <div className="grid gap-4">
-            {benefits.map((benefit, index) => (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {weeklyExample.map((item) => (
               <div
-                key={benefit}
-                className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm"
+                key={item.label}
+                className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_50px_-35px_rgba(15,23,42,0.35)]"
               >
-                <div className="text-sm font-semibold text-cyan-300">
-                  0{index + 1}
-                </div>
-                <p className="mt-2 text-lg leading-8 text-slate-100">
-                  {benefit}
+                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--color-primary)]">
+                  {item.label}
+                </p>
+                <p className="mt-3 text-3xl font-semibold text-slate-950">
+                  {item.value}
                 </p>
               </div>
             ))}
@@ -317,8 +383,8 @@ export default function Home() {
       <SectionShell id="como-funciona" tone="light">
         <SectionHeading
           eyebrow="Cómo Funciona"
-          title="Tres pasos para dejar de cargar con todo tú solo."
-          description="Lo mantenemos simple para que los conductores correctos puedan empezar rápido y volver a enfocarse en la carretera."
+          title="Así se ve el proceso cuando cerramos el mismo día."
+          description="No lo tratamos como una página bonita. Lo tratamos como una operación real: revisamos fit, tomamos la conversación y si todo encaja avanzamos sin vueltas."
         />
         <div className="grid gap-6 lg:grid-cols-3">
           {steps.map((step) => (
@@ -343,8 +409,8 @@ export default function Home() {
       <SectionShell id="quienes-califican" tone="brand">
         <SectionHeading
           eyebrow="Con Quién Trabajamos"
-          title="No buscamos cualquier conductor. Buscamos conductores que realmente trabajan el noreste."
-          description="Queremos mejor fit, no solo más formularios. Si tú corres por NY, NJ, CT y PA, queremos hablar contigo."
+          title="No trabajamos con cualquiera. Trabajamos con conductores que quieren subir el nivel de su semana."
+          description="Si tú trabajas NY, NJ, CT y PA con frecuencia, prefieres comunicación directa y no quieres seguir aceptando cargas flojas, queremos hablar contigo."
         />
         <div className="mb-8 grid gap-4 lg:grid-cols-3">
           {fitPoints.map((point) => (
@@ -363,7 +429,7 @@ export default function Home() {
               className="rounded-3xl border border-slate-200 bg-white p-7 shadow-[0_20px_55px_-35px_rgba(15,23,42,0.35)]"
             >
               <div className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--color-primary)]">
-                Confianza
+                Baja Fricción
               </div>
               <h3 className="mt-4 text-2xl font-semibold text-slate-900">
                 {signal.title}
@@ -376,34 +442,11 @@ export default function Home() {
         </div>
       </SectionShell>
 
-      <SectionShell id="areas-servicio" tone="light">
-        <SectionHeading
-          eyebrow="Área de Servicio"
-          title="Nuestro enfoque está en New York, New Jersey, Connecticut y Pennsylvania."
-          description="Esta página está enfocada en el corredor del noreste porque ahí queremos el mejor fit. Si tu operación toca esos estados con frecuencia, este servicio está hecho para ti."
-        />
-        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-          {serviceAreas.map((area) => (
-            <article
-              key={area.title}
-              className="rounded-3xl border border-slate-200 bg-white p-7 shadow-[0_18px_50px_-35px_rgba(15,23,42,0.35)]"
-            >
-              <h3 className="text-xl font-semibold text-slate-900">
-                {area.title}
-              </h3>
-              <p className="mt-3 text-sm leading-7 text-slate-600">
-                {area.description}
-              </p>
-            </article>
-          ))}
-        </div>
-      </SectionShell>
-
       <SectionShell id="precios" tone="light">
         <SectionHeading
-          eyebrow="Precios"
-          title="Precios simples y fáciles de entender."
-          description="No trabajamos con estructuras complicadas. Hoy ofrecemos dos maneras simples de cobrar el dispatch para que elijas la que mejor encaja con tu operación."
+          eyebrow="Cómo Cobramos"
+          title="Dos formas simples de trabajar con nosotros."
+          description="No publicamos una tabla complicada porque primero vemos si tu operación encaja. Si sí encaja, te explicamos directo si te conviene porcentaje por carga o tarifa semanal."
         />
         <div className="grid gap-6 md:grid-cols-2">
           {pricingOptions.map((option) => (
@@ -423,28 +466,53 @@ export default function Home() {
             </article>
           ))}
         </div>
+        <div className="mt-6 grid gap-4 md:grid-cols-3">
+          <div className="rounded-3xl border border-emerald-100 bg-emerald-50 p-6 text-sm leading-7 text-emerald-900">
+            Sin fee inicial raro
+          </div>
+          <div className="rounded-3xl border border-emerald-100 bg-emerald-50 p-6 text-sm leading-7 text-emerald-900">
+            Si no hay fit, te lo decimos rápido
+          </div>
+          <div className="rounded-3xl border border-emerald-100 bg-emerald-50 p-6 text-sm leading-7 text-emerald-900">
+            La idea es que tú ruedes mejor, no venderte una llamada
+          </div>
+        </div>
       </SectionShell>
 
-      <SectionShell id="preguntas-frecuentes" tone="brand">
+      <SectionShell id="sistema" tone="dark">
         <SectionHeading
-          eyebrow="Preguntas Frecuentes"
-          title="Lo que normalmente preguntan los conductores antes de empezar."
-          description="Las buenas landing pages aclaran las dudas más importantes antes del primer contacto. Estas son algunas de las preguntas más comunes."
+          eyebrow="Sistema Real"
+          title="Esto tiene que sentirse como una máquina de trabajo, no como un favor."
+          description="Cuando un conductor decide confiar, necesita sentir estructura. Necesita saber quién responde, cómo se sigue la carga y cómo se mueve la comunicación."
         />
-        <div className="grid gap-5 lg:grid-cols-2">
-          {faqs.map((faq) => (
-            <article
-              key={faq.question}
-              className="rounded-3xl border border-slate-200 bg-white p-7 shadow-[0_18px_50px_-35px_rgba(15,23,42,0.35)]"
-            >
-              <h3 className="text-xl font-semibold text-slate-900">
-                {faq.question}
-              </h3>
-              <p className="mt-4 text-base leading-8 text-slate-600">
-                {faq.answer}
-              </p>
-            </article>
-          ))}
+        <div className="grid gap-6 md:grid-cols-3">
+          <article className="rounded-3xl border border-white/10 bg-white/5 p-7 backdrop-blur-sm">
+            <h3 className="text-xl font-semibold text-white">
+              Dispatcher asignado
+            </h3>
+            <p className="mt-3 text-sm leading-7 text-slate-300">
+              No queda todo suelto. Hay una persona pendiente de tu operación y
+              del siguiente movimiento.
+            </p>
+          </article>
+          <article className="rounded-3xl border border-white/10 bg-white/5 p-7 backdrop-blur-sm">
+            <h3 className="text-xl font-semibold text-white">
+              Seguimiento diario
+            </h3>
+            <p className="mt-3 text-sm leading-7 text-slate-300">
+              Carga, comunicación y próximos pasos. La operación tiene orden,
+              no mensajes perdidos.
+            </p>
+          </article>
+          <article className="rounded-3xl border border-white/10 bg-white/5 p-7 backdrop-blur-sm">
+            <h3 className="text-xl font-semibold text-white">
+              Comunicación con brokers
+            </h3>
+            <p className="mt-3 text-sm leading-7 text-slate-300">
+              Búsqueda, negociación, rate confirmations y seguimiento para que
+              tú no vivas pegado al teléfono todo el día.
+            </p>
+          </article>
         </div>
       </SectionShell>
 
@@ -453,25 +521,43 @@ export default function Home() {
           <div>
             <SectionHeading
               eyebrow="Contacto"
-              title="¿Corres NY, NJ, CT o PA y necesitas ayuda con dispatch?"
-              description="Cuéntanos qué equipo manejas y qué rutas trabajas. Te mostramos cómo ahorrar tiempo, mejorar tarifas y mantenerte más cargado en la zona donde realmente trabajas."
+              title="¿Corres NY, NJ, CT o PA y quieres resolver esto hoy?"
+              description="Escríbenos por WhatsApp o déjanos tu información. Si vemos buen fit, te explicamos el siguiente paso el mismo día y sin vueltas."
               align="left"
             />
             <div className="mt-8 grid gap-4 text-sm text-slate-600">
               <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4">
-                Menos estrés con brokers y más enfoque en manejar
+                Revisamos rápido si tu operación encaja
               </div>
               <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4">
-                Mejores tarifas en cargas del corredor del noreste
+                Si prefieres WhatsApp, esa es la vía más rápida
               </div>
               <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4">
-                Más consistencia en tus cargas de NY, NJ, CT y PA
+                Si hay fit, pasamos al siguiente paso el mismo día
               </div>
             </div>
+            {whatsAppHref ? (
+              <a
+                href={whatsAppHref}
+                target="_blank"
+                rel="noreferrer"
+                data-analytics-event="cta_clicked"
+                data-analytics-label="WhatsApp contacto"
+                data-analytics-location="contact-panel"
+                className="mt-6 inline-flex items-center justify-center rounded-full bg-emerald-500 px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400"
+              >
+                Escríbenos y Te Respondemos Rápido
+              </a>
+            ) : null}
           </div>
 
           <ContactForm
-            buttonLabel="Consigue Dispatcher Hoy"
+            buttonLabel="Activa Tu Revisión"
+            pendingLabel="Enviando..."
+            successMessage="Recibimos tu información. Si quieres acelerar el proceso, escríbenos por WhatsApp y revisamos tu operación hoy mismo."
+            helperText="Si prefieres cerrar rápido, usa el botón de WhatsApp. Si prefieres dejar tus datos primero, este formulario llega directo a nuestro equipo."
+            whatsAppLabel="Escríbenos por WhatsApp"
+            whatsAppMessage="Hola, acabo de llenar el formulario de iDispatchLoads y quiero revisar mi operación hoy mismo."
             labels={{
               firstName: "Nombre",
               lastName: "Apellido",
@@ -489,7 +575,7 @@ export default function Home() {
               truckType: "Car hauler, hotshot, dry van...",
               preferredLanes: "NY a PA, pasando por NJ, corredor de CT...",
               notes:
-                "Cuéntanos cómo trabajas, dónde sales y cómo corres las rutas de NY, NJ, CT y PA.",
+                "Cuéntanos cómo trabajas, desde dónde sales y si prefieres hablar por WhatsApp hoy mismo.",
             }}
           />
         </div>

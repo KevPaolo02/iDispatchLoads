@@ -4,6 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { buildWhatsAppHref } from "@/lib/utils";
+
 const navLinks = [
   { href: "/en", label: "Home" },
   { href: "/en#services", label: "Services" },
@@ -12,8 +14,6 @@ const navLinks = [
 ];
 
 const navLinksEs = [
-  { href: "/", label: "Inicio" },
-  { href: "/#servicios", label: "Servicios" },
   { href: "/#como-funciona", label: "Cómo Funciona" },
   { href: "/#contacto", label: "Contacto" },
 ];
@@ -23,6 +23,12 @@ export function Navbar() {
   const isSpanish =
     pathname === "/" || pathname === "/es" || pathname.startsWith("/es/");
   const links = isSpanish ? navLinksEs : navLinks;
+  const whatsAppHref = buildWhatsAppHref(
+    process.env.NEXT_PUBLIC_WHATSAPP_NUMBER,
+    isSpanish
+      ? "Hola, quiero revisar mi operación con iDispatchLoads. Corro rutas en NY / NJ / CT / PA."
+      : "Hello, I want to review my operation with iDispatchLoads. I run routes in NY / NJ / CT / PA.",
+  );
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl">
@@ -42,6 +48,16 @@ export function Navbar() {
         </Link>
 
         <div className="flex items-center gap-3">
+          {whatsAppHref ? (
+            <a
+              href={whatsAppHref}
+              target="_blank"
+              rel="noreferrer"
+              className="hidden rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 md:inline-flex"
+            >
+              WhatsApp
+            </a>
+          ) : null}
           <nav aria-label="Main navigation">
             <ul className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
               {links.map((link) => {
