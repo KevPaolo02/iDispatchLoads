@@ -55,7 +55,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className="h-full antialiased">
+    <html
+      lang="es"
+      className="h-full antialiased"
+      suppressHydrationWarning
+    >
       <body className="min-h-full bg-[var(--color-page)] text-slate-950">
         {children}
       </body>
