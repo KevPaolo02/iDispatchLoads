@@ -25,8 +25,18 @@ import {
   listLoadVehiclesByLoadId,
   listProblemFlagsByEntity,
 } from "@/lib/db";
+import { requireDashboardSession } from "@/lib/auth";
 import { loadVehicleOperabilityStatuses, dispatchLoadStatuses } from "@/lib/types";
-import { getLoadMarginSnapshot, getLoadMissingChecklist } from "@/lib/services";
+import {
+  canAccessLoad,
+  filterDriversForAccess,
+  getLoadMarginSnapshot,
+  getLoadMissingChecklist,
+} from "@/lib/services";
+import {
+  buildDriverRouteMessage,
+  buildGoogleMapsRouteUrl,
+} from "@/lib/utils/route-share";
 
 type LoadDetailPageProps = {
   params: Promise<{
@@ -72,6 +82,7 @@ function formatCurrency(value: number | null) {
 }
 
 export default async function LoadDetailPage({ params }: LoadDetailPageProps) {
+  const session = await requireDashboardSession();
   const { loadId } = await params;
   const load = await getLoadById(loadId);
 
@@ -86,8 +97,17 @@ export default async function LoadDetailPage({ params }: LoadDetailPageProps) {
     listProblemFlagsByEntity("load", load.id),
   ]);
 
+  const scopedDrivers = filterDriversForAccess(drivers, session);
+  const visibleDriverIds = new Set(scopedDrivers.map((driver) => driver.id));
+
+  if (!canAccessLoad(load, visibleDriverIds, session)) {
+    notFound();
+  }
+
   const missingChecklist = getLoadMissingChecklist(load);
   const margin = getLoadMarginSnapshot(load, vehicles.length);
+  const googleMapsRouteUrl = buildGoogleMapsRouteUrl(load);
+  const driverRouteMessage = buildDriverRouteMessage(load);
 
   return (
     <section className="space-y-8">
@@ -123,11 +143,26 @@ export default async function LoadDetailPage({ params }: LoadDetailPageProps) {
               screens.
             </p>
           </div>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <a
+              href={googleMapsRouteUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-full border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+            >
+              Open in Google Maps
+            </a>
+            <CopyButton value={googleMapsRouteUrl} label="Copy Route Link" />
+            <CopyButton
+              value={driverRouteMessage}
+              label="Copy Driver Message"
+            />
+          </div>
           <dl className="mt-5 grid gap-4 text-sm text-slate-700 md:grid-cols-2">
             <div>
               <dt className="font-semibold text-slate-500">Assigned unit</dt>
               <dd className="mt-1">
-                {drivers.find((driver) => driver.id === load.driverId)?.driverName ?? "Unassigned"}
+                {scopedDrivers.find((driver) => driver.id === load.driverId)?.driverName ?? "Unassigned"}
               </dd>
             </div>
             <div>
@@ -227,7 +262,7 @@ export default async function LoadDetailPage({ params }: LoadDetailPageProps) {
                 className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none transition focus:border-[var(--color-primary)] focus:bg-white"
               >
                 <option value="">Unassigned unit</option>
-                {drivers.map((driver) => (
+                {scopedDrivers.map((driver) => (
                   <option key={driver.id} value={driver.id}>
                     {driver.driverName} • {driver.company}
                   </option>

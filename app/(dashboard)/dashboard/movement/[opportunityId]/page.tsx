@@ -25,8 +25,13 @@ import {
   listLoadOpportunityVehiclesByOpportunityId,
   listProblemFlagsByEntity,
 } from "@/lib/db";
+import { requireDashboardSession } from "@/lib/auth";
 import { loadVehicleOperabilityStatuses } from "@/lib/types";
-import { getOpportunityMissingChecklist } from "@/lib/services";
+import {
+  canAccessOpportunity,
+  filterDriversForAccess,
+  getOpportunityMissingChecklist,
+} from "@/lib/services";
 
 type OpportunityDetailPageProps = {
   params: Promise<{
@@ -74,6 +79,7 @@ function formatCurrency(value: number | null) {
 export default async function OpportunityDetailPage({
   params,
 }: OpportunityDetailPageProps) {
+  const session = await requireDashboardSession();
   const { opportunityId } = await params;
   const opportunity = await getLoadOpportunityById(opportunityId);
 
@@ -87,6 +93,13 @@ export default async function OpportunityDetailPage({
     listActivityEventsByEntity("load_opportunity", opportunity.id),
     listProblemFlagsByEntity("load_opportunity", opportunity.id),
   ]);
+
+  const scopedDrivers = filterDriversForAccess(drivers, session);
+  const visibleDriverIds = new Set(scopedDrivers.map((driver) => driver.id));
+
+  if (!canAccessOpportunity(opportunity, visibleDriverIds, session)) {
+    notFound();
+  }
 
   const missingChecklist = getOpportunityMissingChecklist(opportunity, vehicles);
 
@@ -234,7 +247,7 @@ export default async function OpportunityDetailPage({
                 className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none transition focus:border-[var(--color-primary)] focus:bg-white"
               >
                 <option value="">Unassigned unit</option>
-                {drivers.map((driver) => (
+                {scopedDrivers.map((driver) => (
                   <option key={driver.id} value={driver.id}>
                     {driver.driverName} • {driver.company}
                   </option>

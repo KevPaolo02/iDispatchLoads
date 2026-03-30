@@ -19,6 +19,7 @@ import type {
 
 export interface DriverCreateInput {
   sourceLeadId: string | null;
+  assignedDispatcherEmail: string | null;
   company: string;
   driverName: string;
   phone: string;
@@ -86,6 +87,7 @@ export interface DriverStatusUpdateInput {
 
 export interface DriverMovementUpdateInput {
   driverId: Driver["id"];
+  assignedDispatcherEmail: string | null;
   truckUnitNumber: string | null;
   truckVin: string | null;
   trailerUnitNumber: string | null;
@@ -97,6 +99,26 @@ export interface DriverMovementUpdateInput {
 
 export interface DriverNotesUpdateInput {
   driverId: Driver["id"];
+  notes: string | null;
+}
+
+export interface DriverProfileUpdateInput {
+  driverId: Driver["id"];
+  assignedDispatcherEmail: string | null;
+  company: string;
+  driverName: string;
+  phone: string;
+  truckType: string;
+  truckUnitNumber: string | null;
+  truckVin: string | null;
+  trailerUnitNumber: string | null;
+  trailerVin: string | null;
+  preferredLanes: string | null;
+  homeBase: string;
+  currentLocation: string | null;
+  availableFrom: string | null;
+  capacity: number | null;
+  status: DriverStatus;
   notes: string | null;
 }
 

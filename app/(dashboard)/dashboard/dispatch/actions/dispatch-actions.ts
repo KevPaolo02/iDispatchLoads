@@ -12,6 +12,7 @@ import {
   deleteLoadVehicleFromFormData,
   resolveProblemFlagFromFormData,
   updateDriverNotesFromFormData,
+  updateDriverProfileFromFormData,
   updateDriverStatusFromFormData,
   updateLoadNotesFromFormData,
   updateLoadOperationalFromFormData,
@@ -48,6 +49,18 @@ export async function saveDriverNotesAction(formData: FormData) {
   await updateDriverNotesFromFormData(formData);
   revalidatePath("/dashboard/dispatch");
   revalidatePath("/dashboard/movement");
+}
+
+export async function saveDriverProfileAction(formData: FormData) {
+  await requireDashboardSession();
+  const driverId = String(formData.get("driverId") ?? "");
+  await updateDriverProfileFromFormData(formData);
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/dispatch");
+  revalidatePath("/dashboard/movement");
+  if (driverId) {
+    revalidatePath(`/dashboard/units/${driverId}`);
+  }
 }
 
 export async function updateLoadStatusAction(formData: FormData) {

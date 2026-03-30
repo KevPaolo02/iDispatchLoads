@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 
 import { DispatchBoard } from "@/components/dashboard/dispatch-board";
 import {
+  getDispatcherAccountOptions,
+  requireDashboardSession,
+} from "@/lib/auth";
+import {
   getLeadById,
   getLoadOpportunityById,
   listDrivers,
@@ -12,8 +16,11 @@ import {
 import {
   buildDriverReviewEntries,
   buildLoadReviewEntries,
+  canAccessOpportunity,
   filterDriverReviewEntries,
+  filterDriversForAccess,
   filterLoadReviewEntries,
+  filterLoadsForAccess,
   parseDispatchBoardFilters,
 } from "@/lib/services";
 
@@ -38,6 +45,7 @@ export const dynamic = "force-dynamic";
 export default async function DashboardDispatchPage({
   searchParams,
 }: DashboardDispatchPageProps) {
+  const session = await requireDashboardSession();
   let drivers = [];
   let loads = [];
   let loadVehicles = [];
@@ -91,14 +99,28 @@ export default async function DashboardDispatchPage({
     );
   }
 
-  preselectedDriverId =
-    driverId ?? selectedOpportunity?.assignedDriverId ?? null;
+  const scopedDrivers = filterDriversForAccess(drivers, session);
+  const visibleDriverIds = new Set(scopedDrivers.map((driver) => driver.id));
+  const scopedLoads = filterLoadsForAccess(loads, visibleDriverIds, session);
 
-  const driverEntries = buildDriverReviewEntries(drivers, loads);
+  if (!canAccessOpportunity(selectedOpportunity, visibleDriverIds, session)) {
+    selectedOpportunity = null;
+  }
+
+  if (selectedLead && session.role !== "admin") {
+    selectedLead = null;
+  }
+
+  preselectedDriverId =
+    (driverId && visibleDriverIds.has(driverId) ? driverId : null) ??
+    selectedOpportunity?.assignedDriverId ??
+    null;
+
+  const driverEntries = buildDriverReviewEntries(scopedDrivers, scopedLoads);
   const visibleDriverEntries = filterDriverReviewEntries(driverEntries, filters);
   const loadEntries = buildLoadReviewEntries(
-    loads,
-    drivers,
+    scopedLoads,
+    scopedDrivers,
     loadVehicles,
     problemFlags,
   );
@@ -106,13 +128,15 @@ export default async function DashboardDispatchPage({
 
   return (
     <DispatchBoard
-      drivers={drivers}
+      drivers={scopedDrivers}
       driverEntries={visibleDriverEntries}
       loadEntries={visibleLoadEntries}
       filters={filters}
       selectedLead={selectedLead}
       selectedOpportunity={selectedOpportunity}
       preselectedDriverId={preselectedDriverId}
+      dispatcherOptions={getDispatcherAccountOptions()}
+      isOwner={session.role === "admin"}
     />
   );
 }

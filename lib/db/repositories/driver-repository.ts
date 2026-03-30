@@ -4,6 +4,7 @@ import type {
   DriverCreateInput,
   DriverMovementUpdateInput,
   DriverNotesUpdateInput,
+  DriverProfileUpdateInput,
   DriverRow,
   DriverStatus,
 } from "@/lib/types";
@@ -12,6 +13,7 @@ function mapDriverRow(row: DriverRow): Driver {
   return {
     id: row.id,
     sourceLeadId: row.source_lead_id,
+    assignedDispatcherEmail: row.assigned_dispatcher_email,
     company: row.company,
     driverName: row.driver_name,
     phone: row.phone,
@@ -39,6 +41,7 @@ export async function createDriver(input: DriverCreateInput): Promise<Driver> {
     .from("drivers")
     .insert({
       ...(input.sourceLeadId ? { source_lead_id: input.sourceLeadId } : {}),
+      assigned_dispatcher_email: input.assignedDispatcherEmail,
       company: input.company,
       driver_name: input.driverName,
       phone: input.phone,
@@ -153,6 +156,36 @@ export async function getDriverBySourceLeadId(
   return mapDriverRow(data as DriverRow);
 }
 
+export async function getDriverById(driverId: string): Promise<Driver | null> {
+  const db = getDatabase();
+  const { data, error } = await db
+    .from("drivers")
+    .select("*")
+    .eq("id", driverId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[driver-repository] Supabase get by id failed", {
+      table: "drivers",
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      payload: {
+        driverId,
+      },
+    });
+
+    throw new Error(`Unable to load driver: ${error.message}`);
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  return mapDriverRow(data as DriverRow);
+}
+
 export async function updateDriverStatus(
   driverId: string,
   status: DriverStatus,
@@ -249,6 +282,7 @@ export async function updateDriverMovement(
   const { data, error } = await db
     .from("drivers")
     .update({
+      assigned_dispatcher_email: input.assignedDispatcherEmail,
       truck_unit_number: input.truckUnitNumber,
       truck_vin: input.truckVin,
       trailer_unit_number: input.trailerUnitNumber,
@@ -289,6 +323,66 @@ export async function updateDriverMovement(
     );
 
     throw new Error("Unable to update driver movement: update returned no row.");
+  }
+
+  return mapDriverRow(data as DriverRow);
+}
+
+export async function updateDriverProfile(
+  input: DriverProfileUpdateInput,
+): Promise<Driver> {
+  const db = getDatabase();
+  const { data, error } = await db
+    .from("drivers")
+    .update({
+      assigned_dispatcher_email: input.assignedDispatcherEmail,
+      company: input.company,
+      driver_name: input.driverName,
+      phone: input.phone,
+      truck_type: input.truckType,
+      truck_unit_number: input.truckUnitNumber,
+      truck_vin: input.truckVin,
+      trailer_unit_number: input.trailerUnitNumber,
+      trailer_vin: input.trailerVin,
+      preferred_lanes: input.preferredLanes,
+      home_base: input.homeBase,
+      current_location: input.currentLocation,
+      available_from: input.availableFrom,
+      capacity: input.capacity,
+      status: input.status,
+      notes: input.notes,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", input.driverId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("[driver-repository] Supabase profile update failed", {
+      table: "drivers",
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      payload: {
+        driverId: input.driverId,
+        company: input.company,
+        driverName: input.driverName,
+      },
+    });
+
+    throw new Error(`Unable to update driver profile: ${error.message}`);
+  }
+
+  if (!data) {
+    console.error("[driver-repository] Supabase profile update returned no row", {
+      table: "drivers",
+      payload: {
+        driverId: input.driverId,
+      },
+    });
+
+    throw new Error("Unable to update driver profile: update returned no row.");
   }
 
   return mapDriverRow(data as DriverRow);

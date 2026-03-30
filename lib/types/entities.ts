@@ -173,6 +173,7 @@ export interface Carrier extends BaseEntity {
 
 export interface Driver extends BaseEntity {
   sourceLeadId: string | null;
+  assignedDispatcherEmail: string | null;
   company: string;
   driverName: string;
   phone: string;

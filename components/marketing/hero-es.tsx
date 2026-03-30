@@ -1,12 +1,12 @@
 import Link from "next/link";
 
 const heroBenefits = [
-  "Save hours every day by getting off the boards",
-  "Get better rates on NY, NJ, CT, and PA freight",
-  "Stay loaded in the Northeast lanes you actually want",
+  "Ahorra horas todos los días",
+  "Consigue mejores tarifas",
+  "Mantente con cargas constantes en tus rutas",
 ];
 
-export function Hero() {
+export function HeroEs() {
   return (
     <section className="relative overflow-hidden bg-slate-950">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.2),_transparent_32%),linear-gradient(135deg,_rgba(15,23,42,0.98),_rgba(11,18,32,0.92))]" />
@@ -15,15 +15,16 @@ export function Hero() {
       <div className="relative mx-auto grid w-full max-w-7xl gap-16 px-6 py-20 sm:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:px-10 lg:py-28">
         <div className="max-w-2xl">
           <p className="text-sm font-semibold uppercase tracking-[0.32em] text-cyan-300">
-            For NY / NJ / CT / PA Owner-Operators
+            Para Choferes de NY / NJ / CT / PA
           </p>
           <h1 className="mt-6 text-4xl font-semibold tracking-tight text-white sm:text-5xl lg:text-6xl">
-            Stop Wasting Hours Chasing Cheap Loads Across the Northeast
+            Deja de Perder Horas Persiguiendo Cargas Baratas en el Noreste
           </h1>
           <p className="mt-6 max-w-xl text-lg leading-8 text-slate-300 sm:text-xl">
-            We help owner-operators running from, through, or to New York, New
-            Jersey, Connecticut, and Pennsylvania save time, get better-paying
-            freight, and stay moving without spending all day on broker calls.
+            Ayudamos a choferes y dueños-operadores que trabajan desde, por, o
+            hacia New York, New Jersey, Connecticut y Pennsylvania a ahorrar
+            tiempo, conseguir mejores cargas y mantenerse en movimiento sin
+            vivir pegados al teléfono.
           </p>
           <ul className="mt-8 grid gap-3 text-base text-slate-100 sm:max-w-lg">
             {heroBenefits.map((benefit) => (
@@ -38,47 +39,46 @@ export function Hero() {
           </ul>
           <div className="mt-10 flex flex-col gap-4 sm:flex-row">
             <Link
-              href="/en#contact"
+              href="/#contacto"
               data-analytics-event="cta_clicked"
-              data-analytics-label="Get a Dispatcher Today"
-              data-analytics-location="hero-primary"
+              data-analytics-label="Consigue Dispatcher Hoy"
+              data-analytics-location="hero-primary-es"
               className="inline-flex items-center justify-center rounded-full bg-[var(--color-accent)] px-7 py-3.5 text-sm font-semibold text-slate-950 transition hover:bg-[var(--color-accent-strong)]"
             >
-              Get a Dispatcher Today
+              Consigue Dispatcher Hoy
             </Link>
             <Link
-              href="/en#home-how-it-works"
+              href="/#como-funciona"
               data-analytics-event="cta_clicked"
-              data-analytics-label="See If You Fit"
-              data-analytics-location="hero-secondary"
+              data-analytics-label="Ver Si Calificas"
+              data-analytics-location="hero-secondary-es"
               className="inline-flex items-center justify-center rounded-full border border-white/15 px-7 py-3.5 text-sm font-semibold text-white transition hover:bg-white/10"
             >
-              See If You Fit
+              Ver Si Calificas
             </Link>
           </div>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="rounded-[2rem] border border-white/10 bg-white/10 p-6 backdrop-blur-sm sm:col-span-2">
-            <p className="text-sm text-cyan-300">Northeast Corridor Focus</p>
+            <p className="text-sm text-cyan-300">Enfoque en el Corredor Noreste</p>
             <p className="mt-3 text-2xl font-semibold text-white">
-              We are looking for drivers who run in and around New York, New
-              Jersey, Connecticut, and Pennsylvania, not every lane in the
-              country.
+              Buscamos choferes que trabajen cargas en New York, New Jersey,
+              Connecticut y Pennsylvania, no choferes de cualquier zona.
             </p>
           </div>
           <div className="rounded-[2rem] border border-white/10 bg-white/5 p-6 backdrop-blur-sm">
-            <p className="text-sm text-slate-300">Best Fit</p>
+            <p className="text-sm text-slate-300">Mejor Para Ti Si</p>
             <p className="mt-3 text-lg font-semibold text-white">
-              Best for drivers who want steady Northeast freight instead of
-              random one-off loads.
+              Quieres mantenerte en el noreste con cargas más consistentes y
+              menos viajes al azar.
             </p>
           </div>
           <div className="rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,_rgba(34,211,238,0.18),_rgba(255,255,255,0.03))] p-6 backdrop-blur-sm">
-            <p className="text-sm text-slate-200">Revenue Focus</p>
+            <p className="text-sm text-slate-200">Enfocado en Ingreso</p>
             <p className="mt-3 text-lg font-semibold text-white">
-              Better rates and smarter lane planning mean stronger weeks in the
-              Northeast.
+              Mejores tarifas y mejor planificación significan semanas más
+              productivas en el noreste.
             </p>
           </div>
         </div>

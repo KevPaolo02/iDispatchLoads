@@ -49,6 +49,7 @@ export type LeadInsertRow = Omit<
 export type DriverRow = {
   id: string;
   source_lead_id: string | null;
+  assigned_dispatcher_email: string | null;
   company: string;
   driver_name: string;
   phone: string;
@@ -74,6 +75,7 @@ export type DriverInsertRow = Omit<
   | "created_at"
   | "updated_at"
   | "source_lead_id"
+  | "assigned_dispatcher_email"
   | "truck_unit_number"
   | "truck_vin"
   | "trailer_unit_number"
@@ -85,6 +87,7 @@ export type DriverInsertRow = Omit<
 > & {
   id?: string;
   source_lead_id?: string | null;
+  assigned_dispatcher_email?: string | null;
   truck_unit_number?: string | null;
   truck_vin?: string | null;
   trailer_unit_number?: string | null;

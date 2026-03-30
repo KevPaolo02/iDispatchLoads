@@ -1,13 +1,22 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f4f7fb;
+  --background: #eef4fb;
   --foreground: #0f172a;
-  --color-page: #f4f7fb;
+  --color-page: #eef4fb;
   --color-primary: #0f766e;
   --color-primary-strong: #115e59;
   --color-accent: #fbbf24;
   --color-accent-strong: #f59e0b;
+  --color-dashboard-ink: #0f172a;
+  --color-dashboard-shell: #f7fafc;
+  --color-dashboard-sky: #e0f2fe;
+  --color-dashboard-sky-strong: #c6e7ff;
+  --color-dashboard-mint: #dcfce7;
+  --color-dashboard-mint-strong: #bbf7d0;
+  --color-dashboard-amber: #fef3c7;
+  --color-dashboard-amber-strong: #fde68a;
+  --color-dashboard-rose: #ffe4e6;
 }
 
 @theme inline {
@@ -26,7 +35,10 @@ html {
 }
 
 body {
-  background: var(--background);
+  background:
+    radial-gradient(circle at top left, rgba(14, 165, 233, 0.08), transparent 28%),
+    radial-gradient(circle at top right, rgba(15, 118, 110, 0.08), transparent 24%),
+    linear-gradient(180deg, #f8fbff 0%, var(--background) 42%, #eef4fb 100%);
   color: var(--foreground);
   font-family: "Avenir Next", "Segoe UI", sans-serif;
 }

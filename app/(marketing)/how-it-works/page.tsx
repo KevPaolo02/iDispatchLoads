@@ -1,14 +1,24 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 
 import { SectionHeading } from "@/components/shared/section-heading";
 import { SectionShell } from "@/components/shared/section-shell";
+
+export const metadata: Metadata = {
+  title: "How Northeast Dispatch Works",
+  description:
+    "See how iDispatchLoads.com helps owner-operators running NY, NJ, CT, and PA lanes with onboarding, daily dispatch execution, and ongoing support.",
+  alternates: {
+    canonical: "/how-it-works",
+  },
+};
 
 const steps = [
   {
     step: "01",
     title: "Onboarding Call",
     description:
-      "We learn your equipment type, preferred freight lanes, operating style, and weekly revenue targets.",
+      "We learn your equipment type, preferred freight lanes, operating style, and weekly revenue targets so we know whether the fit is right.",
   },
   {
     step: "02",
@@ -20,7 +30,7 @@ const steps = [
     step: "03",
     title: "Ongoing Support",
     description:
-      "We stay involved with paperwork, broker updates, and load flow so your operation keeps moving without unnecessary friction.",
+      "We stay involved with paperwork, broker updates, and load flow so your operation keeps moving with less friction and fewer distractions.",
   },
 ];
 
@@ -29,8 +39,8 @@ export default function HowItWorksPage() {
     <SectionShell tone="light" className="pt-14">
       <SectionHeading
         eyebrow="How It Works"
-        title="A simple process designed to keep trucks loaded and schedules moving."
-        description="Our workflow is built to remove admin friction, improve communication, and help independent carriers operate with more consistency."
+        title="A simple dispatch process built to keep you loaded and moving."
+        description="Our workflow is built to cut admin friction, improve communication, and help Northeast owner-operators run with more consistency."
       />
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -58,13 +68,13 @@ export default function HowItWorksPage() {
         </h3>
         <p className="mt-3 max-w-2xl text-base leading-8 text-slate-300">
           The fastest way to begin is to tell us about your truck, your lanes,
-          and the kind of dispatch support you need.
+          and the kind of dispatch help you need right now.
         </p>
         <Link
           href="/contact"
           className="mt-6 inline-flex rounded-full bg-[var(--color-accent)] px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-[var(--color-accent-strong)]"
         >
-          Contact Our Team
+          Talk to Our Team
         </Link>
       </div>
     </SectionShell>

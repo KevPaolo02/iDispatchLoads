@@ -16,6 +16,10 @@ type LeadsReviewProps = {
   leadEntries: LeadReviewEntry[];
   totalCount: number;
   filters: LeadReviewFilters;
+  dispatcherOptions: Array<{
+    email: string;
+    label: string;
+  }>;
 };
 
 function getSelectableStatuses(status: Lead["status"]) {
@@ -227,7 +231,16 @@ function FollowUpFlags({ flags }: { flags: LeadFollowUpFlags }) {
   );
 }
 
-function LeadToDriverForm({ lead }: { lead: Lead }) {
+function LeadToDriverForm({
+  lead,
+  dispatcherOptions,
+}: {
+  lead: Lead;
+  dispatcherOptions: Array<{
+    email: string;
+    label: string;
+  }>;
+}) {
   return (
     <form action={convertLeadToDriverAction} className="space-y-2">
       <input type="hidden" name="leadId" value={lead.id} />
@@ -248,6 +261,19 @@ function LeadToDriverForm({ lead }: { lead: Lead }) {
           className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[var(--color-primary)] focus:bg-white"
         />
       </div>
+
+      <select
+        name="assignedDispatcherEmail"
+        defaultValue={dispatcherOptions[0]?.email ?? ""}
+        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-[var(--color-primary)] focus:bg-white"
+      >
+        <option value="">Select dispatcher</option>
+        {dispatcherOptions.map((option) => (
+          <option key={option.email} value={option.email}>
+            {option.label}
+          </option>
+        ))}
+      </select>
 
       <button
         type="submit"
@@ -312,6 +338,7 @@ export function LeadsReview({
   leadEntries,
   totalCount,
   filters,
+  dispatcherOptions,
 }: LeadsReviewProps) {
   const hasActiveFilters = filters.status !== "all" || filters.query.length > 0;
 
@@ -456,7 +483,10 @@ export function LeadsReview({
                 <LeadNotesForm lead={lead} />
               </div>
               <div className="mt-4 border-t border-slate-200 pt-4">
-                <LeadToDriverForm lead={lead} />
+                <LeadToDriverForm
+                  lead={lead}
+                  dispatcherOptions={dispatcherOptions}
+                />
               </div>
             </div>
           </article>
@@ -541,7 +571,10 @@ export function LeadsReview({
                         <LeadNotesForm lead={lead} />
                       </div>
                       <div className="border-t border-slate-200 pt-4">
-                        <LeadToDriverForm lead={lead} />
+                        <LeadToDriverForm
+                          lead={lead}
+                          dispatcherOptions={dispatcherOptions}
+                        />
                       </div>
                     </div>
                   </td>

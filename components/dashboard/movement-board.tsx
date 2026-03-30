@@ -15,9 +15,12 @@ import {
   DriverStatusBadge,
   LoadStatusBadge,
   OpportunityStatusBadge,
+  ProblemFlagBadge,
   ReloadPriorityBadge,
   StatusBadge,
 } from "@/components/dashboard/status-badge";
+import { PagePlaybook } from "@/components/dashboard/page-playbook";
+import { OpportunityVehicleFields } from "@/components/dashboard/opportunity-vehicle-fields";
 import { CopyButton } from "@/components/shared/copy-button";
 import type { Driver } from "@/lib/types";
 import { driverStatuses, loadOpportunityStatuses } from "@/lib/types";
@@ -32,6 +35,11 @@ type MovementBoardProps = {
   fleetEntries: FleetMovementEntry[];
   opportunityEntries: OpportunityBoardEntry[];
   reloadPriorityEntries: ReloadPriorityEntry[];
+  dispatcherOptions: Array<{
+    email: string;
+    label: string;
+  }>;
+  isOwner: boolean;
 };
 
 function formatDateTime(value: string | null) {
@@ -67,30 +75,82 @@ function formatCurrency(value: number | null) {
   }).format(value);
 }
 
-function CreateFleetUnitForm() {
+function getDispatcherLabel(
+  email: string | null,
+  dispatcherOptions: Array<{
+    email: string;
+    label: string;
+  }>,
+) {
+  if (!email) {
+    return "Unassigned";
+  }
+
   return (
-    <form
-      action={updateDriverMovementAction}
-      className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-35px_rgba(15,23,42,0.22)]"
-    >
-      <div className="space-y-2">
-        <h2 className="font-heading text-2xl font-semibold text-slate-950">
-          Update Unit Movement
-        </h2>
-        <p className="text-sm leading-6 text-slate-600">
-          Use the Dispatch board to add units. Use this section to keep current
-          location, trailer details, and reload timing up to date.
-        </p>
-      </div>
-      <p className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600">
-        Pick a unit below and use its card to update movement. This board keeps
-        the work dispatcher-first instead of opening giant admin forms here.
-      </p>
-    </form>
+    dispatcherOptions.find((option) => option.email === email)?.label ?? email
   );
 }
 
-function CreateOpportunityForm({ drivers }: { drivers: Driver[] }) {
+function MovementHelpCard({ isOwner }: { isOwner: boolean }) {
+  return (
+    <div className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-[0_18px_60px_-35px_rgba(15,23,42,0.22)]">
+      <div className="space-y-2">
+        <h2 className="font-heading text-2xl font-semibold text-slate-950">
+          How dispatchers use this page
+        </h2>
+        <p className="text-sm leading-6 text-slate-600">
+          Fleet Movement is for possible work. Add board posts here, attach them
+          to the right unit, and only move them into Dispatch once the move is
+          real.
+        </p>
+      </div>
+
+      <div className="mt-5 grid gap-3">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+            1. Capture
+          </p>
+          <p className="mt-2 text-sm leading-6 text-slate-700">
+            Add the board post with route, pickup and delivery windows, contact
+            info, and the vehicles being moved.
+          </p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+            2. Match
+          </p>
+          <p className="mt-2 text-sm leading-6 text-slate-700">
+            Use the reload queue and Daniel Gruas LLC unit cards below to decide
+            which truck should take the next move.
+          </p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+            3. Handoff
+          </p>
+          <p className="mt-2 text-sm leading-6 text-slate-700">
+            When the job is confirmed, open Create Load so the real booked move
+            continues on the Dispatch board.
+          </p>
+        </div>
+      </div>
+
+      <p className="mt-4 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm leading-6 text-sky-800">
+        {isOwner
+          ? "Owner tip: assign each unit to a dispatcher so work and accountability stay clear."
+          : "Dispatcher tip: only work the units assigned to you and keep movement details current before booking the next move."}
+      </p>
+    </div>
+  );
+}
+
+function CreateOpportunityForm({
+  drivers,
+  isOwner,
+}: {
+  drivers: Driver[];
+  isOwner: boolean;
+}) {
   return (
     <form
       action={createLoadOpportunityAction}
@@ -98,18 +158,18 @@ function CreateOpportunityForm({ drivers }: { drivers: Driver[] }) {
     >
       <div className="space-y-2">
         <h2 className="font-heading text-2xl font-semibold text-slate-950">
-          Add Opportunity
+          Capture Board Opportunity
         </h2>
         <p className="text-sm leading-6 text-slate-600">
           Capture a Central Dispatch, Super Dispatch, ACV, or other board post
-          fast, then finish the operational detail on the opportunity page.
+          fast with enough detail for someone else to work it later.
         </p>
       </div>
 
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         <input
           name="source"
-          placeholder="Source board"
+          placeholder="Source board (Central Dispatch, ACV, etc.)"
           required
           className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[var(--color-primary)] focus:bg-white"
         />
@@ -130,24 +190,14 @@ function CreateOpportunityForm({ drivers }: { drivers: Driver[] }) {
           className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[var(--color-primary)] focus:bg-white"
         />
         <input
-          name="vehiclesCount"
-          type="number"
-          min="1"
-          step="1"
-          defaultValue="1"
-          required
-          placeholder="Vehicles"
-          className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[var(--color-primary)] focus:bg-white"
-        />
-        <input
           name="origin"
-          placeholder="Origin"
+          placeholder="Pickup city / state / zip"
           required
           className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[var(--color-primary)] focus:bg-white"
         />
         <input
           name="destination"
-          placeholder="Destination"
+          placeholder="Delivery city / state / zip"
           required
           className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[var(--color-primary)] focus:bg-white"
         />
@@ -159,32 +209,40 @@ function CreateOpportunityForm({ drivers }: { drivers: Driver[] }) {
             className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[var(--color-primary)] focus:bg-white"
           />
         </label>
+        <label className="grid gap-2 text-sm font-medium text-slate-700">
+          Delivery window
+          <input
+            name="deliveryWindow"
+            type="datetime-local"
+            className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[var(--color-primary)] focus:bg-white"
+          />
+        </label>
         <input
           name="rate"
           type="number"
           min="0"
           step="0.01"
-          placeholder="Quoted rate"
+          placeholder="Quoted or expected rate"
           className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[var(--color-primary)] focus:bg-white"
         />
         <input
           name="contactName"
-          placeholder="Contact name"
+          placeholder="Posting contact name"
           required
           className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[var(--color-primary)] focus:bg-white"
         />
         <input
           name="contactPhone"
-          placeholder="Contact phone"
+          placeholder="Posting contact phone"
           required
           className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[var(--color-primary)] focus:bg-white"
         />
         <select
           name="assignedDriverId"
-          defaultValue=""
+          defaultValue={isOwner ? "" : drivers[0]?.id ?? ""}
           className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[var(--color-primary)] focus:bg-white"
         >
-          <option value="">Unassigned unit</option>
+          {isOwner ? <option value="">Unassigned unit</option> : null}
           {drivers.map((driver) => (
             <option key={driver.id} value={driver.id}>
               {driver.driverName} • {driver.company}
@@ -204,10 +262,12 @@ function CreateOpportunityForm({ drivers }: { drivers: Driver[] }) {
         </select>
       </div>
 
+      <OpportunityVehicleFields />
+
       <textarea
         name="notes"
         rows={4}
-        placeholder="Notes / instructions"
+        placeholder="Notes / instructions / special handling"
         className="mt-4 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[var(--color-primary)] focus:bg-white"
       />
 
@@ -275,8 +335,15 @@ function ReloadQueue({
 
 function FleetUnitsSection({
   fleetEntries,
+  dispatcherOptions,
+  isOwner,
 }: {
   fleetEntries: FleetMovementEntry[];
+  dispatcherOptions: Array<{
+    email: string;
+    label: string;
+  }>;
+  isOwner: boolean;
 }) {
   return (
     <section className="space-y-4">
@@ -286,7 +353,7 @@ function FleetUnitsSection({
         </h2>
         <p className="text-sm leading-6 text-slate-600">
           Keep unit status, location, capacity, and reload visibility in one
-          place.
+          place so a new hire can tell what each truck is doing without asking.
         </p>
       </div>
 
@@ -332,6 +399,15 @@ function FleetUnitsSection({
                 <div>
                   <dt className="font-semibold text-slate-500">Assigned loads</dt>
                   <dd className="mt-1">{entry.assignedLoadsCount}</dd>
+                </div>
+                <div>
+                  <dt className="font-semibold text-slate-500">Dispatcher</dt>
+                  <dd className="mt-1">
+                    {getDispatcherLabel(
+                      entry.driver.assignedDispatcherEmail,
+                      dispatcherOptions,
+                    )}
+                  </dd>
                 </div>
                 <div>
                   <dt className="font-semibold text-slate-500">Last load date</dt>
@@ -384,6 +460,12 @@ function FleetUnitsSection({
                 {entry.driver.truckUnitNumber ? (
                   <StatusBadge label={`Truck ${entry.driver.truckUnitNumber}`} />
                 ) : null}
+                <Link
+                  href={`/dashboard/units/${entry.driver.id}`}
+                  className="text-sm font-semibold text-[var(--color-primary)] transition hover:text-[var(--color-primary-strong)]"
+                >
+                  Open Unit
+                </Link>
               </div>
 
               <form
@@ -415,6 +497,26 @@ function FleetUnitsSection({
                 className="mt-4 grid gap-3 sm:grid-cols-2"
               >
                 <input type="hidden" name="driverId" value={entry.driver.id} />
+                {isOwner ? (
+                  <select
+                    name="assignedDispatcherEmail"
+                    defaultValue={entry.driver.assignedDispatcherEmail ?? ""}
+                    className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none transition focus:border-[var(--color-primary)] focus:bg-white"
+                  >
+                    <option value="">Unassigned dispatcher</option>
+                    {dispatcherOptions.map((option) => (
+                      <option key={option.email} value={option.email}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="hidden"
+                    name="assignedDispatcherEmail"
+                    value={entry.driver.assignedDispatcherEmail ?? ""}
+                  />
+                )}
                 <input
                   name="currentLocation"
                   defaultValue={entry.driver.currentLocation ?? ""}
@@ -498,16 +600,18 @@ function FleetUnitsSection({
 function OpportunitySection({
   drivers,
   entries,
+  isOwner,
 }: {
   drivers: Driver[];
   entries: OpportunityBoardEntry[];
+  isOwner: boolean;
 }) {
   return (
     <section className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="space-y-2">
           <h2 className="font-heading text-2xl font-semibold text-slate-950">
-            Opportunities
+            Board Opportunities
           </h2>
           <p className="text-sm leading-6 text-slate-600">
             Review board posts, assign them to a unit, and move complete ones
@@ -544,6 +648,7 @@ function OpportunitySection({
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <OpportunityStatusBadge status={entry.opportunity.status} />
+                  {entry.problemCount ? <ProblemFlagBadge /> : null}
                   {entry.problemCount ? (
                     <StatusBadge label={`${entry.problemCount} problems`} tone="border-rose-200 bg-rose-50 text-rose-700" />
                   ) : null}
@@ -580,18 +685,19 @@ function OpportunitySection({
 
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
                   <p className="font-semibold text-slate-950">Quick access</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
                     {entry.opportunity.contactPhone ? (
                       <>
                         <a
                           href={`tel:${entry.opportunity.contactPhone}`}
-                          className="text-[var(--color-primary)] transition hover:text-[var(--color-primary-strong)]"
+                          className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
                         >
                           Call contact
                         </a>
                         <CopyButton
                           value={entry.opportunity.contactPhone}
                           label="Copy phone"
+                          className="w-full justify-center px-3 py-2 text-sm"
                         />
                       </>
                     ) : null}
@@ -599,28 +705,29 @@ function OpportunitySection({
                       <CopyButton
                         value={entry.opportunity.sourceReference}
                         label="Copy ref"
+                        className="w-full justify-center px-3 py-2 text-sm"
                       />
                     ) : null}
                     {entry.opportunity.sourceUrl ? (
                       <Link
                         href={entry.opportunity.sourceUrl}
                         target="_blank"
-                        className="text-[var(--color-primary)] transition hover:text-[var(--color-primary-strong)]"
+                        className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
                       >
                         Open source
                       </Link>
                     ) : null}
                   </div>
-                  <div className="mt-4 flex flex-wrap gap-2">
+                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
                     <Link
                       href={`/dashboard/movement/${entry.opportunity.id}`}
-                      className="rounded-full border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+                      className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
                     >
                       Open Details
                     </Link>
                     <Link
                       href={`/dashboard/dispatch?opportunityId=${entry.opportunity.id}${entry.opportunity.assignedDriverId ? `&driverId=${entry.opportunity.assignedDriverId}` : ""}`}
-                      className="rounded-full bg-[var(--color-primary)] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[var(--color-primary-strong)]"
+                      className="inline-flex items-center justify-center rounded-xl bg-[var(--color-primary)] px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--color-primary-strong)]"
                     >
                       Create Load
                     </Link>
@@ -662,10 +769,13 @@ function OpportunitySection({
                   />
                   <select
                     name="driverId"
-                    defaultValue={entry.opportunity.assignedDriverId ?? ""}
+                    defaultValue={
+                      entry.opportunity.assignedDriverId ??
+                      (isOwner ? "" : drivers[0]?.id ?? "")
+                    }
                     className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none transition focus:border-[var(--color-primary)] focus:bg-white"
                   >
-                    <option value="">Unassigned unit</option>
+                    {isOwner ? <option value="">Unassigned unit</option> : null}
                     {drivers.map((driver) => (
                       <option key={driver.id} value={driver.id}>
                         {driver.driverName} • {driver.company}
@@ -714,30 +824,73 @@ export function MovementBoard({
   fleetEntries,
   opportunityEntries,
   reloadPriorityEntries,
+  dispatcherOptions,
+  isOwner,
 }: MovementBoardProps) {
   return (
     <section className="space-y-8">
-      <div className="space-y-3">
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[var(--color-primary)]">
-          Fleet Movement
-        </p>
-        <h1 className="font-heading text-3xl font-semibold text-slate-950 sm:text-4xl">
-          Keep Daniel Gruas LLC moving.
-        </h1>
-        <p className="max-w-3xl text-base leading-7 text-slate-600">
-          Capture opportunities, attach them to the right unit, and keep reload
-          risk visible before trucks sit.
-        </p>
+      <div className="rounded-[1.75rem] border border-sky-100 bg-gradient-to-r from-white via-sky-50 to-amber-50 px-5 py-5 shadow-[0_26px_70px_-50px_rgba(14,165,233,0.42)]">
+        <div className="space-y-3">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[var(--color-primary)]">
+            Fleet Movement
+          </p>
+          <h1 className="font-heading text-3xl font-semibold text-slate-950 sm:text-4xl">
+            Keep Daniel Gruas LLC moving.
+          </h1>
+          <p className="max-w-3xl text-base leading-7 text-slate-600">
+            Capture opportunities, attach them to the right unit, and keep reload
+            risk visible before trucks sit.
+          </p>
+        </div>
       </div>
 
+      <PagePlaybook
+        eyebrow={isOwner ? "Owner Workflow" : "Dispatcher Workflow"}
+        title="What this page is for"
+        description={
+          isOwner
+            ? "Fleet Movement is where your team organizes possible work from external boards before it becomes a booked load."
+            : "Use this page to capture outside board posts, match them to your assigned units, and hand confirmed work into Dispatch."
+        }
+        steps={[
+          {
+            title: "Watch the reload queue first",
+            description:
+              "Any unit in the queue is at risk of sitting soon and should get the next review before low-priority work.",
+          },
+          {
+            title: "Capture complete opportunities",
+            description:
+              "Enter enough route, vehicle, contact, and timing detail so another dispatcher could work the record without extra context.",
+          },
+          {
+            title: "Only convert real work",
+            description:
+              "Once the move is real, use Create Load and continue execution from the Dispatch board instead of managing it here.",
+          },
+        ]}
+        actions={[
+          { label: "Open Dispatch Board", href: "/dashboard/dispatch" },
+          { label: "Open Main Dashboard", href: "/dashboard" },
+        ]}
+      />
+
       <div className="grid gap-6 xl:grid-cols-[1.1fr,1.3fr]">
-        <CreateFleetUnitForm />
-        <CreateOpportunityForm drivers={drivers} />
+        <MovementHelpCard isOwner={isOwner} />
+        <CreateOpportunityForm drivers={drivers} isOwner={isOwner} />
       </div>
 
       <ReloadQueue entries={reloadPriorityEntries} />
-      <FleetUnitsSection fleetEntries={fleetEntries} />
-      <OpportunitySection drivers={drivers} entries={opportunityEntries} />
+      <FleetUnitsSection
+        fleetEntries={fleetEntries}
+        dispatcherOptions={dispatcherOptions}
+        isOwner={isOwner}
+      />
+      <OpportunitySection
+        drivers={drivers}
+        entries={opportunityEntries}
+        isOwner={isOwner}
+      />
     </section>
   );
 }

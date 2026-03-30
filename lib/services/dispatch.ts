@@ -11,6 +11,7 @@ import {
   deleteLoadOpportunityVehicle,
   deleteLoadVehicle,
   getDriverBySourceLeadId,
+  getDriverById,
   getLeadById,
   getLoadById,
   getLoadOpportunityById,
@@ -18,6 +19,7 @@ import {
   resolveProblemFlag,
   updateDriverMovement,
   updateDriverNotes,
+  updateDriverProfile,
   updateDriverStatus,
   updateLeadActivity,
   updateLoadNotes,
@@ -29,7 +31,11 @@ import {
   updateLoadStatus,
   updateLoadVehicle,
 } from "@/lib/db";
-import { canOverrideStatusTransitions, getDashboardSession } from "@/lib/auth";
+import {
+  canOverrideStatusTransitions,
+  getDashboardSession,
+  getKnownDispatcherEmails,
+} from "@/lib/auth";
 import type {
   ActivityActionType,
   ActivityEntityType,
@@ -67,9 +73,6 @@ import {
   normalizeText,
 } from "@/lib/utils";
 import { z } from "zod";
-
-const DEFAULT_ACTOR_EMAIL = "system@idispatchloads.local";
-const DEFAULT_ACTOR_ROLE: UserRole = "admin";
 
 const loadStatusTransitions: Record<
   DispatchLoadStatus,
@@ -132,6 +135,7 @@ const opportunityStatusTransitions: Record<
 
 const driverCreateSchema = z.object({
   sourceLeadId: z.string().uuid().nullable(),
+  assignedDispatcherEmail: z.string().email().nullable(),
   company: z.string().min(1).max(120),
   driverName: z.string().min(1).max(120),
   phone: z.string().min(1).refine((value) => value.replace(/\D/g, "").length >= 7),
@@ -153,6 +157,7 @@ const leadToDriverConversionSchema = z.object({
   leadId: z.string().uuid(),
   company: z.string().min(1).max(120),
   homeBase: z.string().min(1).max(120),
+  assignedDispatcherEmail: z.string().email().nullable(),
 });
 
 const loadCreateSchema = z.object({
@@ -247,6 +252,18 @@ const loadAssignmentSchema = z.object({
   driverId: z.string().uuid().nullable(),
 });
 
+const driverMovementUpdateSchema = z.object({
+  driverId: z.string().uuid(),
+  assignedDispatcherEmail: z.string().email().nullable(),
+  truckUnitNumber: z.string().max(60).nullable(),
+  truckVin: z.string().length(17).nullable(),
+  trailerUnitNumber: z.string().max(60).nullable(),
+  trailerVin: z.string().length(17).nullable(),
+  currentLocation: z.string().max(160).nullable(),
+  availableFrom: z.string().nullable(),
+  capacity: z.number().int().positive().nullable(),
+});
+
 const loadOpportunityCreateSchema = z.object({
   source: z.string().min(1).max(120),
   sourceUrl: z.string().max(1000).nullable(),
@@ -276,6 +293,15 @@ const loadOpportunityCreateSchema = z.object({
   status: z.enum(loadOpportunityStatuses),
   assignedDriverId: z.string().uuid().nullable(),
   notes: z.string().max(2000).nullable(),
+});
+
+const opportunityVehicleDraftSchema = z.object({
+  year: z.number().int().min(1900).max(2100).nullable(),
+  make: z.string().min(1).max(120),
+  model: z.string().min(1).max(120),
+  vin: z.string().length(17).nullable(),
+  lotNumber: z.string().max(120).nullable(),
+  operability: z.enum(loadVehicleOperabilityStatuses),
 });
 
 const loadOpportunityOperationalUpdateSchema = z.object({
@@ -320,19 +346,28 @@ const driverStatusUpdateSchema = z.object({
   status: z.enum(driverStatuses),
 });
 
-const driverMovementUpdateSchema = z.object({
+const driverNotesUpdateSchema = z.object({
   driverId: z.string().uuid(),
+  notes: z.string().max(2000).nullable(),
+});
+
+const driverProfileUpdateSchema = z.object({
+  driverId: z.string().uuid(),
+  assignedDispatcherEmail: z.string().email().nullable(),
+  company: z.string().min(1).max(120),
+  driverName: z.string().min(1).max(120),
+  phone: z.string().min(1).refine((value) => value.replace(/\D/g, "").length >= 7),
+  truckType: z.string().min(1).max(120),
   truckUnitNumber: z.string().max(60).nullable(),
   truckVin: z.string().length(17).nullable(),
   trailerUnitNumber: z.string().max(60).nullable(),
   trailerVin: z.string().length(17).nullable(),
+  preferredLanes: z.string().max(240).nullable(),
+  homeBase: z.string().min(1).max(120),
   currentLocation: z.string().max(160).nullable(),
   availableFrom: z.string().nullable(),
   capacity: z.number().int().positive().nullable(),
-});
-
-const driverNotesUpdateSchema = z.object({
-  driverId: z.string().uuid(),
+  status: z.enum(driverStatuses),
   notes: z.string().max(2000).nullable(),
 });
 
@@ -464,15 +499,15 @@ function normalizeOptionalEmail(value: FormDataEntryValue | null) {
   return normalized.length > 0 ? normalized : null;
 }
 
+function normalizeOptionalDispatcherEmail(value: FormDataEntryValue | null) {
+  return normalizeOptionalEmail(value);
+}
+
 async function getActorContext(): Promise<ActorContext> {
   const session = await getDashboardSession();
 
   if (!session) {
-    return {
-      actorEmail: DEFAULT_ACTOR_EMAIL,
-      actorRole: DEFAULT_ACTOR_ROLE,
-      canOverrideTransitions: true,
-    };
+    throw new Error("Dashboard session required.");
   }
 
   return {
@@ -480,6 +515,96 @@ async function getActorContext(): Promise<ActorContext> {
     actorRole: session.role,
     canOverrideTransitions: canOverrideStatusTransitions(session),
   };
+}
+
+function resolveAssignedDispatcherEmail(
+  requestedEmail: string | null,
+  actor: ActorContext,
+) {
+  if (actor.actorRole === "dispatcher") {
+    return actor.actorEmail.trim().toLowerCase();
+  }
+
+  if (!requestedEmail) {
+    return null;
+  }
+
+  const normalizedEmail = requestedEmail.trim().toLowerCase();
+
+  if (!getKnownDispatcherEmails().includes(normalizedEmail)) {
+    throw new Error("Assigned dispatcher is not a valid internal account.");
+  }
+
+  return normalizedEmail;
+}
+
+async function requireDriverAccess(
+  driverId: string,
+  actor: ActorContext,
+) {
+  const driver = await getDriverById(driverId);
+
+  if (!driver) {
+    throw new Error("Driver not found.");
+  }
+
+  if (actor.actorRole === "admin") {
+    return driver;
+  }
+
+  if (
+    actor.actorRole === "dispatcher" &&
+    driver.assignedDispatcherEmail?.trim().toLowerCase() ===
+      actor.actorEmail.trim().toLowerCase()
+  ) {
+    return driver;
+  }
+
+  throw new Error("You do not have access to this driver.");
+}
+
+async function requireLoadAccess(
+  loadId: string,
+  actor: ActorContext,
+) {
+  const load = await getLoadById(loadId);
+
+  if (!load) {
+    throw new Error("Load not found.");
+  }
+
+  if (actor.actorRole === "admin") {
+    return load;
+  }
+
+  if (!load.driverId) {
+    throw new Error("You do not have access to unassigned loads.");
+  }
+
+  await requireDriverAccess(load.driverId, actor);
+  return load;
+}
+
+async function requireOpportunityAccess(
+  opportunityId: string,
+  actor: ActorContext,
+) {
+  const opportunity = await getLoadOpportunityById(opportunityId);
+
+  if (!opportunity) {
+    throw new Error("Opportunity not found.");
+  }
+
+  if (actor.actorRole === "admin") {
+    return opportunity;
+  }
+
+  if (!opportunity.assignedDriverId) {
+    throw new Error("You do not have access to unassigned opportunities.");
+  }
+
+  await requireDriverAccess(opportunity.assignedDriverId, actor);
+  return opportunity;
 }
 
 async function recordActivity(input: ActivityEventCreateInput) {
@@ -722,6 +847,9 @@ async function maybeSyncDriverStatusForLoad(load: Load) {
 function parseDriverCreateInput(formData: FormData): DriverCreateInput {
   return {
     sourceLeadId: normalizeOptionalUuid(formData.get("sourceLeadId")),
+    assignedDispatcherEmail: normalizeOptionalDispatcherEmail(
+      formData.get("assignedDispatcherEmail"),
+    ),
     company: normalizeText(formData.get("company")),
     driverName: normalizeText(formData.get("driverName")),
     phone: normalizePhone(formData.get("phone")),
@@ -889,6 +1017,34 @@ function parseLoadOpportunityOperationalUpdateInput(
   };
 }
 
+function parseOpportunityVehicleInputs(formData: FormData) {
+  const years = formData.getAll("vehicleYear");
+  const makes = formData.getAll("vehicleMake");
+  const models = formData.getAll("vehicleModel");
+  const vins = formData.getAll("vehicleVin");
+  const lotNumbers = formData.getAll("vehicleLotNumber");
+  const operabilities = formData.getAll("vehicleOperability");
+
+  const totalRows = Math.max(
+    years.length,
+    makes.length,
+    models.length,
+    vins.length,
+    lotNumbers.length,
+    operabilities.length,
+  );
+
+  return Array.from({ length: totalRows }, (_, index) => ({
+    year: normalizeOptionalInteger(years[index] ?? null),
+    make: normalizeText(makes[index] ?? null),
+    model: normalizeText(models[index] ?? null),
+    vin: normalizeOptionalVin(vins[index] ?? null),
+    lotNumber: normalizeOptionalText(lotNumbers[index] ?? null),
+    operability: (normalizeText(operabilities[index] ?? null) ||
+      "operable") as LoadVehicleOperabilityStatus,
+  })).filter((vehicle) => vehicle.make || vehicle.model || vehicle.vin || vehicle.year);
+}
+
 function parseLoadVehicleCreateInput(formData: FormData): LoadVehicleCreateInput {
   return {
     loadId: normalizeText(formData.get("loadId")),
@@ -1018,16 +1174,24 @@ function isScheduleChange(
 }
 
 export async function createDriverFromFormData(formData: FormData) {
+  const actor = await getActorContext();
   const validation = driverCreateSchema.safeParse(parseDriverCreateInput(formData));
 
   if (!validation.success) {
     throw new Error("Invalid driver request.");
   }
 
-  return createDriver(validation.data);
+  return createDriver({
+    ...validation.data,
+    assignedDispatcherEmail: resolveAssignedDispatcherEmail(
+      validation.data.assignedDispatcherEmail,
+      actor,
+    ),
+  });
 }
 
 export async function updateDriverStatusFromFormData(formData: FormData) {
+  const actor = await getActorContext();
   const validation = driverStatusUpdateSchema.safeParse({
     driverId: normalizeText(formData.get("driverId")),
     status: normalizeText(formData.get("status")),
@@ -1037,13 +1201,22 @@ export async function updateDriverStatusFromFormData(formData: FormData) {
     throw new Error("Invalid driver status request.");
   }
 
-  const driver = await updateDriverStatus(validation.data.driverId, validation.data.status);
+  await requireDriverAccess(validation.data.driverId, actor);
+
+  const driver = await updateDriverStatus(
+    validation.data.driverId,
+    validation.data.status,
+  );
   return driver;
 }
 
 export async function updateDriverMovementFromFormData(formData: FormData) {
+  const actor = await getActorContext();
   const validation = driverMovementUpdateSchema.safeParse({
     driverId: normalizeText(formData.get("driverId")),
+    assignedDispatcherEmail: normalizeOptionalDispatcherEmail(
+      formData.get("assignedDispatcherEmail"),
+    ),
     truckUnitNumber: normalizeOptionalText(formData.get("truckUnitNumber")),
     truckVin: normalizeOptionalVin(formData.get("truckVin")),
     trailerUnitNumber: normalizeOptionalText(formData.get("trailerUnitNumber")),
@@ -1057,12 +1230,21 @@ export async function updateDriverMovementFromFormData(formData: FormData) {
     throw new Error("Invalid driver movement request.");
   }
 
-  const driver = await updateDriverMovement(validation.data);
+  await requireDriverAccess(validation.data.driverId, actor);
+
+  const driver = await updateDriverMovement({
+    ...validation.data,
+    assignedDispatcherEmail: resolveAssignedDispatcherEmail(
+      validation.data.assignedDispatcherEmail,
+      actor,
+    ),
+  });
 
   return driver;
 }
 
 export async function updateDriverNotesFromFormData(formData: FormData) {
+  const actor = await getActorContext();
   const validation = driverNotesUpdateSchema.safeParse({
     driverId: normalizeText(formData.get("driverId")),
     notes: normalizeOptionalText(formData.get("notes")),
@@ -1072,14 +1254,59 @@ export async function updateDriverNotesFromFormData(formData: FormData) {
     throw new Error("Invalid driver notes request.");
   }
 
+  await requireDriverAccess(validation.data.driverId, actor);
+
   return updateDriverNotes(validation.data);
 }
 
+export async function updateDriverProfileFromFormData(formData: FormData) {
+  const actor = await getActorContext();
+  const validation = driverProfileUpdateSchema.safeParse({
+    driverId: normalizeText(formData.get("driverId")),
+    assignedDispatcherEmail: normalizeOptionalDispatcherEmail(
+      formData.get("assignedDispatcherEmail"),
+    ),
+    company: normalizeText(formData.get("company")),
+    driverName: normalizeText(formData.get("driverName")),
+    phone: normalizePhone(formData.get("phone")),
+    truckType: normalizeText(formData.get("truckType")),
+    truckUnitNumber: normalizeOptionalText(formData.get("truckUnitNumber")),
+    truckVin: normalizeOptionalVin(formData.get("truckVin")),
+    trailerUnitNumber: normalizeOptionalText(formData.get("trailerUnitNumber")),
+    trailerVin: normalizeOptionalVin(formData.get("trailerVin")),
+    preferredLanes: normalizeOptionalText(formData.get("preferredLanes")),
+    homeBase: normalizeText(formData.get("homeBase")),
+    currentLocation: normalizeOptionalText(formData.get("currentLocation")),
+    availableFrom: normalizeOptionalDateTime(formData.get("availableFrom")),
+    capacity: normalizeOptionalInteger(formData.get("capacity")),
+    status: normalizeText(formData.get("status")),
+    notes: normalizeOptionalText(formData.get("notes")),
+  });
+
+  if (!validation.success) {
+    throw new Error("Invalid driver profile request.");
+  }
+
+  await requireDriverAccess(validation.data.driverId, actor);
+
+  return updateDriverProfile({
+    ...validation.data,
+    assignedDispatcherEmail: resolveAssignedDispatcherEmail(
+      validation.data.assignedDispatcherEmail,
+      actor,
+    ),
+  });
+}
+
 export async function convertLeadToDriverFromFormData(formData: FormData) {
+  const actor = await getActorContext();
   const validation = leadToDriverConversionSchema.safeParse({
     leadId: normalizeText(formData.get("leadId")),
     company: normalizeText(formData.get("company")),
     homeBase: normalizeText(formData.get("homeBase")),
+    assignedDispatcherEmail: normalizeOptionalDispatcherEmail(
+      formData.get("assignedDispatcherEmail"),
+    ),
   });
 
   if (!validation.success) {
@@ -1109,6 +1336,11 @@ export async function convertLeadToDriverFromFormData(formData: FormData) {
 
   const driver = await createDriver({
     sourceLeadId: lead.id,
+    assignedDispatcherEmail: resolveAssignedDispatcherEmail(
+      (validation.data as { assignedDispatcherEmail?: string | null })
+        .assignedDispatcherEmail ?? null,
+      actor,
+    ),
     company: validation.data.company,
     driverName: `${lead.firstName} ${lead.lastName}`.trim(),
     phone: lead.phone,
@@ -1142,8 +1374,15 @@ export async function createLoadFromFormData(formData: FormData) {
   const actor = await getActorContext();
   const rawInput = parseLoadCreateInput(formData);
   const opportunity = rawInput.sourceOpportunityId
-    ? await getLoadOpportunityById(rawInput.sourceOpportunityId)
+    ? await requireOpportunityAccess(rawInput.sourceOpportunityId, actor)
     : null;
+
+  if (rawInput.driverId) {
+    await requireDriverAccess(rawInput.driverId, actor);
+  } else if (actor.actorRole === "dispatcher") {
+    throw new Error("Dispatchers can only create loads for assigned drivers.");
+  }
+
   const preparedInput = mergeOpportunityIntoLoadInput(rawInput, opportunity);
   const validation = loadCreateSchema.safeParse(preparedInput);
 
@@ -1231,11 +1470,7 @@ export async function updateLoadStatusFromFormData(formData: FormData) {
   }
 
   const actor = await getActorContext();
-  const existing = await getLoadById(validation.data.loadId);
-
-  if (!existing) {
-    throw new Error("Load not found.");
-  }
+  const existing = await requireLoadAccess(validation.data.loadId, actor);
 
   ensureTransitionAllowed(
     existing.status,
@@ -1279,6 +1514,7 @@ export async function updateLoadStatusFromFormData(formData: FormData) {
 }
 
 export async function updateLoadNotesFromFormData(formData: FormData) {
+  const actor = await getActorContext();
   const validation = loadNotesUpdateSchema.safeParse({
     loadId: normalizeText(formData.get("loadId")),
     notes: normalizeOptionalText(formData.get("notes")),
@@ -1288,11 +1524,7 @@ export async function updateLoadNotesFromFormData(formData: FormData) {
     throw new Error("Invalid load notes request.");
   }
 
-  const existing = await getLoadById(validation.data.loadId);
-
-  if (!existing) {
-    throw new Error("Load not found.");
-  }
+  const existing = await requireLoadAccess(validation.data.loadId, actor);
 
   const updated = await updateLoadNotes(validation.data);
 
@@ -1318,11 +1550,7 @@ export async function updateLoadOperationalFromFormData(formData: FormData) {
   }
 
   const actor = await getActorContext();
-  const existing = await getLoadById(validation.data.loadId);
-
-  if (!existing) {
-    throw new Error("Load not found.");
-  }
+  const existing = await requireLoadAccess(validation.data.loadId, actor);
 
   const updated = await updateLoadOperationalDetails(validation.data);
 
@@ -1391,16 +1619,54 @@ export async function updateLoadOperationalFromFormData(formData: FormData) {
 }
 
 export async function createLoadOpportunityFromFormData(formData: FormData) {
+  const actor = await getActorContext();
   const validation = loadOpportunityCreateSchema.safeParse(
     parseLoadOpportunityCreateInput(formData),
   );
+  const vehicleValidation = z
+    .array(opportunityVehicleDraftSchema)
+    .min(1, "Add at least one vehicle.")
+    .safeParse(parseOpportunityVehicleInputs(formData));
 
   if (!validation.success) {
     throw new Error("Invalid opportunity request.");
   }
 
-  const actor = await getActorContext();
-  const opportunity = await createLoadOpportunity(validation.data);
+  if (!vehicleValidation.success) {
+    throw new Error("Add at least one complete vehicle before saving.");
+  }
+
+  const vehiclesCount = vehicleValidation.data.length;
+  const opportunityValidation = loadOpportunityCreateSchema.safeParse({
+    ...validation.data,
+    vehiclesCount,
+  });
+
+  if (!opportunityValidation.success) {
+    throw new Error("Invalid opportunity request.");
+  }
+
+  if (opportunityValidation.data.assignedDriverId) {
+    await requireDriverAccess(opportunityValidation.data.assignedDriverId, actor);
+  } else if (actor.actorRole === "dispatcher") {
+    throw new Error("Dispatchers can only create opportunities for assigned drivers.");
+  }
+
+  const opportunity = await createLoadOpportunity(opportunityValidation.data);
+
+  const createdVehicles = await Promise.all(
+    vehicleValidation.data.map((vehicleInput) =>
+      createLoadOpportunityVehicle({
+        opportunityId: opportunity.id,
+        year: vehicleInput.year,
+        make: vehicleInput.make,
+        model: vehicleInput.model,
+        vin: vehicleInput.vin,
+        lotNumber: vehicleInput.lotNumber,
+        operability: vehicleInput.operability,
+      }),
+    ),
+  );
 
   await recordActivity({
     entityType: "load_opportunity",
@@ -1413,8 +1679,26 @@ export async function createLoadOpportunityFromFormData(formData: FormData) {
     newValue: {
       status: opportunity.status,
       assignedDriverId: opportunity.assignedDriverId,
+      vehiclesCount,
     },
   });
+
+  for (const vehicle of createdVehicles) {
+    await recordActivity({
+      entityType: "load_opportunity",
+      entityId: opportunity.id,
+      actionType: "vehicle_added",
+      actorEmail: actor.actorEmail,
+      actorRole: actor.actorRole,
+      noteBody: `${vehicle.year ?? "Year TBD"} ${vehicle.make} ${vehicle.model}`.trim(),
+      oldValue: null,
+      newValue: {
+        opportunityVehicleId: vehicle.id,
+        vin: vehicle.vin,
+        lotNumber: vehicle.lotNumber,
+      },
+    });
+  }
 
   return opportunity;
 }
@@ -1430,11 +1714,7 @@ export async function updateLoadOpportunityStatusFromFormData(formData: FormData
   }
 
   const actor = await getActorContext();
-  const existing = await getLoadOpportunityById(validation.data.opportunityId);
-
-  if (!existing) {
-    throw new Error("Opportunity not found.");
-  }
+  const existing = await requireOpportunityAccess(validation.data.opportunityId, actor);
 
   ensureTransitionAllowed(
     existing.status,
@@ -1472,6 +1752,7 @@ export async function updateLoadOpportunityStatusFromFormData(formData: FormData
 }
 
 export async function updateLoadOpportunityNotesFromFormData(formData: FormData) {
+  const actor = await getActorContext();
   const validation = loadOpportunityNotesUpdateSchema.safeParse({
     opportunityId: normalizeText(formData.get("opportunityId")),
     notes: normalizeOptionalText(formData.get("notes")),
@@ -1481,11 +1762,10 @@ export async function updateLoadOpportunityNotesFromFormData(formData: FormData)
     throw new Error("Invalid opportunity notes request.");
   }
 
-  const existing = await getLoadOpportunityById(validation.data.opportunityId);
-
-  if (!existing) {
-    throw new Error("Opportunity not found.");
-  }
+  const existing = await requireOpportunityAccess(
+    validation.data.opportunityId,
+    actor,
+  );
 
   const updated = await updateLoadOpportunityNotes(validation.data);
 
@@ -1513,11 +1793,10 @@ export async function updateLoadOpportunityOperationalFromFormData(
   }
 
   const actor = await getActorContext();
-  const existing = await getLoadOpportunityById(validation.data.opportunityId);
-
-  if (!existing) {
-    throw new Error("Opportunity not found.");
-  }
+  const existing = await requireOpportunityAccess(
+    validation.data.opportunityId,
+    actor,
+  );
 
   const updated = await updateLoadOpportunityOperationalDetails(validation.data);
 
@@ -1586,6 +1865,7 @@ export async function updateLoadOpportunityOperationalFromFormData(
 }
 
 export async function assignLoadOpportunityToDriverFromFormData(formData: FormData) {
+  const actor = await getActorContext();
   const validation = loadOpportunityAssignmentSchema.safeParse({
     opportunityId: normalizeText(formData.get("opportunityId")),
     driverId: normalizeOptionalUuid(formData.get("driverId")),
@@ -1595,10 +1875,15 @@ export async function assignLoadOpportunityToDriverFromFormData(formData: FormDa
     throw new Error("Invalid opportunity assignment request.");
   }
 
-  const existing = await getLoadOpportunityById(validation.data.opportunityId);
+  const existing = await requireOpportunityAccess(
+    validation.data.opportunityId,
+    actor,
+  );
 
-  if (!existing) {
-    throw new Error("Opportunity not found.");
+  if (validation.data.driverId) {
+    await requireDriverAccess(validation.data.driverId, actor);
+  } else if (actor.actorRole === "dispatcher") {
+    throw new Error("Dispatchers cannot leave opportunities unassigned.");
   }
 
   const updated = await assignLoadOpportunityToDriver(validation.data);
@@ -1616,6 +1901,7 @@ export async function assignLoadOpportunityToDriverFromFormData(formData: FormDa
 }
 
 export async function assignLoadToDriverFromFormData(formData: FormData) {
+  const actor = await getActorContext();
   const validation = loadAssignmentSchema.safeParse({
     loadId: normalizeText(formData.get("loadId")),
     driverId: normalizeOptionalUuid(formData.get("driverId")),
@@ -1625,10 +1911,12 @@ export async function assignLoadToDriverFromFormData(formData: FormData) {
     throw new Error("Invalid load assignment request.");
   }
 
-  const existing = await getLoadById(validation.data.loadId);
+  const existing = await requireLoadAccess(validation.data.loadId, actor);
 
-  if (!existing) {
-    throw new Error("Load not found.");
+  if (validation.data.driverId) {
+    await requireDriverAccess(validation.data.driverId, actor);
+  } else if (actor.actorRole === "dispatcher") {
+    throw new Error("Dispatchers cannot leave loads unassigned.");
   }
 
   const updated = await assignLoadToDriver(validation.data.loadId, validation.data.driverId);

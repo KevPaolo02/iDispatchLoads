@@ -20,6 +20,11 @@ import {
   getOpportunityMissingChecklist,
 } from "@/lib/services/dispatch";
 
+type DashboardScope = {
+  role: "admin" | "dispatcher";
+  email: string;
+} | null;
+
 type SearchParamRecord = Record<string, string | string[] | undefined>;
 
 export type LeadReviewStatusFilter = LeadStatus | "all";
@@ -126,6 +131,18 @@ export type DashboardKpis = {
   loadsNotTouchedToday: number;
 };
 
+export type DispatcherPerformanceEntry = {
+  email: string;
+  label: string;
+  assignedUnits: number;
+  totalLoads: number;
+  activeLoads: number;
+  deliveredLoads: number;
+  openOpportunities: number;
+  problemLoads: number;
+  lastActivityAt: string | null;
+};
+
 export type FollowUpQueueItem = {
   id: string;
   title: string;
@@ -185,6 +202,193 @@ function isKnownStatus<TStatus extends string>(
   statuses: readonly TStatus[],
 ): value is TStatus {
   return statuses.includes(value as TStatus);
+}
+
+export function filterDriversForAccess(
+  drivers: Driver[],
+  session: DashboardScope,
+) {
+  if (!session || session.role === "admin") {
+    return drivers;
+  }
+
+  const dispatcherEmail = session.email.trim().toLowerCase();
+
+  return drivers.filter(
+    (driver) =>
+      driver.assignedDispatcherEmail?.trim().toLowerCase() === dispatcherEmail,
+  );
+}
+
+export function filterLoadsForAccess(
+  loads: Load[],
+  visibleDriverIds: Set<string>,
+  session: DashboardScope,
+) {
+  if (!session || session.role === "admin") {
+    return loads;
+  }
+
+  return loads.filter(
+    (load) => load.driverId !== null && visibleDriverIds.has(load.driverId),
+  );
+}
+
+export function filterOpportunitiesForAccess(
+  opportunities: LoadOpportunity[],
+  visibleDriverIds: Set<string>,
+  session: DashboardScope,
+) {
+  if (!session || session.role === "admin") {
+    return opportunities;
+  }
+
+  return opportunities.filter(
+    (opportunity) =>
+      opportunity.assignedDriverId !== null &&
+      visibleDriverIds.has(opportunity.assignedDriverId),
+  );
+}
+
+export function canAccessDriver(
+  driver: Driver | null,
+  session: DashboardScope,
+) {
+  if (!driver) {
+    return false;
+  }
+
+  if (!session || session.role === "admin") {
+    return true;
+  }
+
+  return (
+    driver.assignedDispatcherEmail?.trim().toLowerCase() ===
+    session.email.trim().toLowerCase()
+  );
+}
+
+export function canAccessLoad(
+  load: Load | null,
+  visibleDriverIds: Set<string>,
+  session: DashboardScope,
+) {
+  if (!load) {
+    return false;
+  }
+
+  if (!session || session.role === "admin") {
+    return true;
+  }
+
+  return load.driverId !== null && visibleDriverIds.has(load.driverId);
+}
+
+export function canAccessOpportunity(
+  opportunity: LoadOpportunity | null,
+  visibleDriverIds: Set<string>,
+  session: DashboardScope,
+) {
+  if (!opportunity) {
+    return false;
+  }
+
+  if (!session || session.role === "admin") {
+    return true;
+  }
+
+  return (
+    opportunity.assignedDriverId !== null &&
+    visibleDriverIds.has(opportunity.assignedDriverId)
+  );
+}
+
+export function buildDispatcherPerformanceEntries(
+  drivers: Driver[],
+  loads: Load[],
+  opportunities: LoadOpportunity[],
+  problemFlags: ProblemFlag[],
+  dispatcherOptions: Array<{
+    email: string;
+    label: string;
+  }>,
+): DispatcherPerformanceEntry[] {
+  const optionLabelByEmail = new Map(
+    dispatcherOptions.map((option) => [option.email.trim().toLowerCase(), option.label]),
+  );
+
+  const driverIdsByDispatcher = new Map<string, string[]>();
+
+  for (const driver of drivers) {
+    const dispatcherEmail = driver.assignedDispatcherEmail?.trim().toLowerCase();
+
+    if (!dispatcherEmail) {
+      continue;
+    }
+
+    const current = driverIdsByDispatcher.get(dispatcherEmail) ?? [];
+    current.push(driver.id);
+    driverIdsByDispatcher.set(dispatcherEmail, current);
+  }
+
+  return Array.from(driverIdsByDispatcher.entries())
+    .map(([email, driverIds]) => {
+      const driverIdSet = new Set(driverIds);
+      const dispatcherLoads = loads.filter(
+        (load) => load.driverId !== null && driverIdSet.has(load.driverId),
+      );
+      const dispatcherOpportunities = opportunities.filter(
+        (opportunity) =>
+          opportunity.assignedDriverId !== null &&
+          driverIdSet.has(opportunity.assignedDriverId),
+      );
+      const problemEntityIds = new Set(
+        problemFlags.filter((flag) => flag.resolvedAt === null).map((flag) => flag.entityId),
+      );
+
+      const timestamps = [
+        ...dispatcherLoads.map((load) => load.updatedAt),
+        ...dispatcherOpportunities.map((opportunity) => opportunity.updatedAt),
+      ]
+        .map((value) => getTime(value))
+        .filter((value) => Number.isFinite(value));
+
+      const lastActivityAt =
+        timestamps.length > 0 ? new Date(Math.max(...timestamps)).toISOString() : null;
+
+      return {
+        email,
+        label: optionLabelByEmail.get(email) ?? email,
+        assignedUnits: driverIds.length,
+        totalLoads: dispatcherLoads.length,
+        activeLoads: dispatcherLoads.filter((load) => isLoadOpen(load)).length,
+        deliveredLoads: dispatcherLoads.filter(
+          (load) => load.status === "delivered" || load.status === "closed",
+        ).length,
+        openOpportunities: dispatcherOpportunities.filter(
+          (opportunity) =>
+            opportunity.status !== "closed_won" &&
+            opportunity.status !== "closed_lost",
+        ).length,
+        problemLoads: dispatcherLoads.filter((load) => problemEntityIds.has(load.id)).length,
+        lastActivityAt,
+      };
+    })
+    .sort((left, right) => {
+      if (right.totalLoads !== left.totalLoads) {
+        return right.totalLoads - left.totalLoads;
+      }
+
+      if (right.activeLoads !== left.activeLoads) {
+        return right.activeLoads - left.activeLoads;
+      }
+
+      if (right.assignedUnits !== left.assignedUnits) {
+        return right.assignedUnits - left.assignedUnits;
+      }
+
+      return left.label.localeCompare(right.label);
+    });
 }
 
 function isLoadOpen(load: Load) {

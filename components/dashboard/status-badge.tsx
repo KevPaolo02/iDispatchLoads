@@ -141,3 +141,12 @@ export function ProblemPriorityBadge({
 }) {
   return <StatusBadge label={priority} tone={getProblemTone(priority)} />;
 }
+
+export function ProblemFlagBadge() {
+  return (
+    <StatusBadge
+      label="problem"
+      tone="border-rose-200 bg-rose-50 text-rose-700"
+    />
+  );
+}

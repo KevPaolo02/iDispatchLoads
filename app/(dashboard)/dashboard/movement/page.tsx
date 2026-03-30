@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 
 import { MovementBoard } from "@/components/dashboard/movement-board";
 import {
+  getDispatcherAccountOptions,
+  requireDashboardSession,
+} from "@/lib/auth";
+import {
   listDrivers,
   listLoadOpportunities,
   listLoadOpportunityVehicles,
@@ -12,6 +16,9 @@ import {
   buildFleetMovementEntries,
   buildOpportunityBoardEntries,
   buildReloadPriorityEntries,
+  filterDriversForAccess,
+  filterLoadsForAccess,
+  filterOpportunitiesForAccess,
 } from "@/lib/services";
 
 export const metadata: Metadata = {
@@ -21,6 +28,7 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function DashboardMovementPage() {
+  const session = await requireDashboardSession();
   let drivers = [];
   let loads = [];
   let opportunities = [];
@@ -64,10 +72,23 @@ export default async function DashboardMovementPage() {
     );
   }
 
-  const fleetEntries = buildFleetMovementEntries(drivers, loads, opportunities);
-  const opportunityEntries = buildOpportunityBoardEntries(
+  const scopedDrivers = filterDriversForAccess(drivers, session);
+  const visibleDriverIds = new Set(scopedDrivers.map((driver) => driver.id));
+  const scopedLoads = filterLoadsForAccess(loads, visibleDriverIds, session);
+  const scopedOpportunities = filterOpportunitiesForAccess(
     opportunities,
-    drivers,
+    visibleDriverIds,
+    session,
+  );
+
+  const fleetEntries = buildFleetMovementEntries(
+    scopedDrivers,
+    scopedLoads,
+    scopedOpportunities,
+  );
+  const opportunityEntries = buildOpportunityBoardEntries(
+    scopedOpportunities,
+    scopedDrivers,
     opportunityVehicles,
     problemFlags,
   );
@@ -75,10 +96,12 @@ export default async function DashboardMovementPage() {
 
   return (
     <MovementBoard
-      drivers={drivers}
+      drivers={scopedDrivers}
       fleetEntries={fleetEntries}
       opportunityEntries={opportunityEntries}
       reloadPriorityEntries={reloadPriorityEntries}
+      dispatcherOptions={getDispatcherAccountOptions()}
+      isOwner={session.role === "admin"}
     />
   );
 }

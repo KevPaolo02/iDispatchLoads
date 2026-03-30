@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { LeadsReview } from "@/components/dashboard/leads-review";
+import { getDispatcherAccountOptions, requireOwnerSession } from "@/lib/auth";
 import { listLeads } from "@/lib/db";
 import {
   buildLeadReviewEntries,
@@ -39,7 +40,9 @@ function formatLastCaptured(createdAt?: string) {
 export default async function DashboardLeadsPage({
   searchParams,
 }: DashboardLeadsPageProps) {
+  await requireOwnerSession();
   let leads = [];
+  const dispatcherOptions = getDispatcherAccountOptions();
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const filters = parseLeadReviewFilters(resolvedSearchParams ?? {});
 
@@ -149,6 +152,7 @@ export default async function DashboardLeadsPage({
         leadEntries={filteredLeadEntries}
         totalCount={leadEntries.length}
         filters={filters}
+        dispatcherOptions={dispatcherOptions}
       />
     </section>
   );

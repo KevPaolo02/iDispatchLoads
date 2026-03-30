@@ -4,9 +4,28 @@ import { useActionState, useEffect, useRef, useState } from "react";
 
 import { submitLeadAction } from "@/app/(marketing)/actions/submit-lead";
 import { initialLeadSubmissionState } from "@/lib/types";
+import { trackLeadConversion } from "@/lib/utils/ad-tracking";
 
 type ContactFormProps = {
   buttonLabel?: string;
+  labels?: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    truckType: string;
+    preferredLanes: string;
+    notes: string;
+  };
+  placeholders?: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    truckType: string;
+    preferredLanes: string;
+    notes: string;
+  };
 };
 
 type FieldErrorProps = {
@@ -39,6 +58,25 @@ function getTrackingDefaults() {
 
 export function ContactForm({
   buttonLabel = "Get Started",
+  labels = {
+    firstName: "First Name",
+    lastName: "Last Name",
+    email: "Email",
+    phone: "Phone",
+    truckType: "Truck / Trailer Type",
+    preferredLanes: "Preferred Lanes / Northeast Coverage",
+    notes: "Notes",
+  },
+  placeholders = {
+    firstName: "First name",
+    lastName: "Last name",
+    email: "name@email.com",
+    phone: "(555) 123-4567",
+    truckType: "Car hauler, hotshot, dry van...",
+    preferredLanes: "NY to PA, through NJ, CT corridor...",
+    notes:
+      "Tell us about your operation, your home base, and how you run NY / NJ / CT / PA lanes.",
+  },
 }: ContactFormProps) {
   const [state, formAction, isPending] = useActionState(
     submitLeadAction,
@@ -46,12 +84,30 @@ export function ContactForm({
   );
   const [tracking] = useState(getTrackingDefaults);
   const formRef = useRef<HTMLFormElement>(null);
+  const lastTrackedLeadId = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     if (state.status === "success") {
       formRef.current?.reset();
     }
   }, [state.status]);
+
+  useEffect(() => {
+    if (state.status !== "success") {
+      return;
+    }
+
+    if (state.leadId && lastTrackedLeadId.current === state.leadId) {
+      return;
+    }
+
+    trackLeadConversion({
+      lead_id: state.leadId,
+      form_location: "marketing_contact_form",
+    });
+
+    lastTrackedLeadId.current = state.leadId;
+  }, [state.leadId, state.status]);
 
   return (
     <form
@@ -70,14 +126,14 @@ export function ContactForm({
               htmlFor="firstName"
               className="text-sm font-semibold text-slate-800"
             >
-              First Name
+              {labels.firstName}
             </label>
             <input
               id="firstName"
               name="firstName"
               type="text"
               required
-              placeholder="First name"
+              placeholder={placeholders.firstName}
               defaultValue={state.values.firstName}
               aria-invalid={Boolean(state.fieldErrors.firstName)}
               aria-describedby={
@@ -95,14 +151,14 @@ export function ContactForm({
               htmlFor="lastName"
               className="text-sm font-semibold text-slate-800"
             >
-              Last Name
+              {labels.lastName}
             </label>
             <input
               id="lastName"
               name="lastName"
               type="text"
               required
-              placeholder="Last name"
+              placeholder={placeholders.lastName}
               defaultValue={state.values.lastName}
               aria-invalid={Boolean(state.fieldErrors.lastName)}
               aria-describedby={
@@ -122,14 +178,14 @@ export function ContactForm({
               htmlFor="email"
               className="text-sm font-semibold text-slate-800"
             >
-              Email
+              {labels.email}
             </label>
             <input
               id="email"
               name="email"
               type="email"
               required
-              placeholder="name@email.com"
+              placeholder={placeholders.email}
               defaultValue={state.values.email}
               aria-invalid={Boolean(state.fieldErrors.email)}
               aria-describedby={state.fieldErrors.email ? "email-error" : undefined}
@@ -145,14 +201,14 @@ export function ContactForm({
               htmlFor="phone"
               className="text-sm font-semibold text-slate-800"
             >
-              Phone
+              {labels.phone}
             </label>
             <input
               id="phone"
               name="phone"
               type="tel"
               required
-              placeholder="(555) 123-4567"
+              placeholder={placeholders.phone}
               defaultValue={state.values.phone}
               aria-invalid={Boolean(state.fieldErrors.phone)}
               aria-describedby={state.fieldErrors.phone ? "phone-error" : undefined}
@@ -170,14 +226,14 @@ export function ContactForm({
               htmlFor="truckType"
               className="text-sm font-semibold text-slate-800"
             >
-              Truck Type
+              {labels.truckType}
             </label>
             <input
               id="truckType"
               name="truckType"
               type="text"
               required
-              placeholder="Dry van, reefer, hotshot..."
+              placeholder={placeholders.truckType}
               defaultValue={state.values.truckType}
               aria-invalid={Boolean(state.fieldErrors.truckType)}
               aria-describedby={
@@ -195,14 +251,14 @@ export function ContactForm({
               htmlFor="preferredLanes"
               className="text-sm font-semibold text-slate-800"
             >
-              Preferred Lanes
+              {labels.preferredLanes}
             </label>
             <input
               id="preferredLanes"
               name="preferredLanes"
               type="text"
               required
-              placeholder="Midwest to Southeast"
+              placeholder={placeholders.preferredLanes}
               defaultValue={state.values.preferredLanes}
               aria-invalid={Boolean(state.fieldErrors.preferredLanes)}
               aria-describedby={
@@ -223,13 +279,13 @@ export function ContactForm({
             htmlFor="notes"
             className="text-sm font-semibold text-slate-800"
           >
-            Notes
+            {labels.notes}
           </label>
           <textarea
             id="notes"
             name="notes"
             rows={6}
-            placeholder="Tell us about your operation, current challenges, and what kind of dispatch support you need."
+            placeholder={placeholders.notes}
             defaultValue={state.values.notes}
             aria-invalid={Boolean(state.fieldErrors.notes)}
             aria-describedby={state.fieldErrors.notes ? "notes-error" : undefined}

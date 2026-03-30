@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 
 import {
   getDashboardRoleLabel,
+  getDispatcherAccountOptions,
   type DashboardAuthRole,
   type DashboardCredential,
 } from "@/lib/auth/config";
@@ -150,4 +151,30 @@ export function canEditFinancials(
   session: Pick<DashboardSession, "role"> | null,
 ) {
   return session?.role === "admin" || session?.role === "dispatcher";
+}
+
+export function isOwnerSession(
+  session: Pick<DashboardSession, "role"> | null,
+): boolean {
+  return session?.role === "admin";
+}
+
+export function isDispatcherSession(
+  session: Pick<DashboardSession, "role"> | null,
+): boolean {
+  return session?.role === "dispatcher";
+}
+
+export function getSessionScopedDispatcherEmail(
+  session: Pick<DashboardSession, "role" | "email"> | null,
+) {
+  if (!session || session.role !== "dispatcher") {
+    return null;
+  }
+
+  return session.email.trim().toLowerCase();
+}
+
+export function getKnownDispatcherEmails() {
+  return getDispatcherAccountOptions().map((account) => account.email);
 }

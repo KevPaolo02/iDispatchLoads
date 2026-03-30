@@ -76,6 +76,7 @@ export const dispatchLiteSchemaSql = `
   create table if not exists public.${driverTableName} (
     id uuid primary key default gen_random_uuid(),
     source_lead_id uuid references public.${leadTableName}(id) on delete set null,
+    assigned_dispatcher_email text,
     company text not null,
     driver_name text not null,
     phone text not null,
@@ -106,6 +107,7 @@ export const dispatchLiteSchemaSql = `
   );
 
   create index if not exists idx_drivers_status on public.${driverTableName}(status);
+  create index if not exists idx_drivers_assigned_dispatcher on public.${driverTableName}(assigned_dispatcher_email);
   create unique index if not exists idx_drivers_source_lead_id on public.${driverTableName}(source_lead_id)
     where source_lead_id is not null;
   create index if not exists idx_drivers_created_at on public.${driverTableName}(created_at desc);
@@ -306,4 +308,12 @@ export const dispatcherReadyOpsSchemaSql = `
   create index if not exists idx_activity_events_entity on public.${activityEventTableName}(entity_type, entity_id, created_at desc);
   create index if not exists idx_problem_flags_entity on public.${problemFlagTableName}(entity_type, entity_id, created_at desc);
   create index if not exists idx_problem_flags_open on public.${problemFlagTableName}(resolved_at) where resolved_at is null;
+`;
+
+export const dispatcherAccessSchemaSql = `
+  alter table public.${driverTableName}
+    add column if not exists assigned_dispatcher_email text;
+
+  create index if not exists idx_drivers_assigned_dispatcher
+    on public.${driverTableName}(assigned_dispatcher_email);
 `;

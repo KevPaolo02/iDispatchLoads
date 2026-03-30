@@ -12,8 +12,10 @@ import {
 import {
   DriverStatusBadge,
   LoadStatusBadge,
+  ProblemFlagBadge,
   StatusBadge,
 } from "@/components/dashboard/status-badge";
+import { PagePlaybook } from "@/components/dashboard/page-playbook";
 import { CopyButton } from "@/components/shared/copy-button";
 import type { Driver, Lead, LoadOpportunity } from "@/lib/types";
 import { dispatchLoadStatuses, driverStatuses } from "@/lib/types";
@@ -22,6 +24,10 @@ import type {
   DriverReviewEntry,
   LoadReviewEntry,
 } from "@/lib/services";
+import {
+  buildDriverRouteMessage,
+  buildGoogleMapsRouteUrl,
+} from "@/lib/utils/route-share";
 
 type DispatchBoardProps = {
   drivers: Driver[];
@@ -31,6 +37,11 @@ type DispatchBoardProps = {
   selectedLead?: Lead | null;
   selectedOpportunity?: LoadOpportunity | null;
   preselectedDriverId?: string | null;
+  dispatcherOptions: Array<{
+    email: string;
+    label: string;
+  }>;
+  isOwner: boolean;
 };
 
 function formatDateTime(value: string | null) {
@@ -64,6 +75,22 @@ function formatCurrency(value: number | null) {
     currency: "USD",
     maximumFractionDigits: 0,
   }).format(value);
+}
+
+function getDispatcherLabel(
+  email: string | null,
+  dispatcherOptions: Array<{
+    email: string;
+    label: string;
+  }>,
+) {
+  if (!email) {
+    return "Unassigned";
+  }
+
+  return (
+    dispatcherOptions.find((option) => option.email === email)?.label ?? email
+  );
 }
 
 function buildDispatchBaseHref({
@@ -239,7 +266,16 @@ function LoadFiltersForm({
   );
 }
 
-function CreateDriverForm() {
+function CreateDriverForm({
+  dispatcherOptions,
+  isOwner,
+}: {
+  dispatcherOptions: Array<{
+    email: string;
+    label: string;
+  }>;
+  isOwner: boolean;
+}) {
   return (
     <form
       action={createDriverAction}
@@ -250,8 +286,8 @@ function CreateDriverForm() {
           Add Driver / Unit
         </h2>
         <p className="text-sm leading-6 text-slate-600">
-          Add a Daniel Gruas LLC driver or unit so loads and movement can be
-          assigned cleanly.
+          Add a Daniel Gruas LLC unit once, then keep its full profile updated
+          from the Unit page and Movement board.
         </p>
       </div>
 
@@ -265,7 +301,7 @@ function CreateDriverForm() {
         />
         <input
           name="driverName"
-          placeholder="Driver / unit name"
+          placeholder="Driver or unit name"
           required
           className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[var(--color-primary)] focus:bg-white"
         />
@@ -277,7 +313,7 @@ function CreateDriverForm() {
         />
         <input
           name="truckType"
-          placeholder="Equipment type"
+          placeholder="Equipment or trailer type"
           required
           className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[var(--color-primary)] focus:bg-white"
         />
@@ -298,6 +334,20 @@ function CreateDriverForm() {
             </option>
           ))}
         </select>
+        {isOwner ? (
+          <select
+            name="assignedDispatcherEmail"
+            defaultValue={dispatcherOptions[0]?.email ?? ""}
+            className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[var(--color-primary)] focus:bg-white md:col-span-2"
+          >
+            <option value="">Select dispatcher</option>
+            {dispatcherOptions.map((option) => (
+              <option key={option.email} value={option.email}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        ) : null}
       </div>
 
       <textarea
@@ -322,11 +372,13 @@ function CreateLoadForm({
   selectedLead,
   selectedOpportunity,
   preselectedDriverId,
+  isOwner,
 }: {
   drivers: Driver[];
   selectedLead?: Lead | null;
   selectedOpportunity?: LoadOpportunity | null;
   preselectedDriverId?: string | null;
+  isOwner: boolean;
 }) {
   const defaultStatus = selectedOpportunity ? "posted" : "posted";
 
@@ -337,11 +389,11 @@ function CreateLoadForm({
     >
       <div className="space-y-2">
         <h2 className="font-heading text-2xl font-semibold text-slate-950">
-          Create Load
+          Create Booked Load
         </h2>
         <p className="text-sm leading-6 text-slate-600">
           Create the real booked/posted load record. If this came from an
-          opportunity, route, notes, and vehicle data carry forward.
+          opportunity, route, notes, pricing, and vehicle data carry forward.
         </p>
       </div>
 
@@ -359,6 +411,11 @@ function CreateLoadForm({
         </div>
       ) : null}
 
+      <p className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600">
+        Use this form only after the move is real. If it is still a possible
+        job from a board, keep it on Fleet Movement until it is confirmed.
+      </p>
+
       <input type="hidden" name="sourceLeadId" value={selectedLead?.id ?? ""} />
       <input
         type="hidden"
@@ -370,13 +427,13 @@ function CreateLoadForm({
         <input
           name="company"
           defaultValue={selectedOpportunity?.company ?? ""}
-          placeholder="Customer / company"
+          placeholder="Customer / dealer / company"
           required
           className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[var(--color-primary)] focus:bg-white"
         />
         <input
           name="broker"
-          placeholder="Broker / carrier company"
+          placeholder="Broker or carrier company"
           required
           className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[var(--color-primary)] focus:bg-white"
         />
@@ -390,14 +447,14 @@ function CreateLoadForm({
         <input
           name="contactName"
           defaultValue={selectedOpportunity?.contactName ?? ""}
-          placeholder="Primary contact name"
+          placeholder="Primary dispatch contact name"
           required
           className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[var(--color-primary)] focus:bg-white"
         />
         <input
           name="contactPhone"
           defaultValue={selectedOpportunity?.contactPhone ?? ""}
-          placeholder="Primary contact phone"
+          placeholder="Primary dispatch contact phone"
           required
           className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[var(--color-primary)] focus:bg-white"
         />
@@ -422,14 +479,14 @@ function CreateLoadForm({
         <input
           name="origin"
           defaultValue={selectedOpportunity?.origin ?? ""}
-          placeholder="Origin"
+          placeholder="Pickup city / state / zip"
           required
           className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[var(--color-primary)] focus:bg-white"
         />
         <input
           name="destination"
           defaultValue={selectedOpportunity?.destination ?? ""}
-          placeholder="Destination"
+          placeholder="Delivery city / state / zip"
           required
           className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[var(--color-primary)] focus:bg-white"
         />
@@ -457,7 +514,7 @@ function CreateLoadForm({
           min="0"
           step="0.01"
           defaultValue={selectedOpportunity?.rate ?? ""}
-          placeholder="Posted / booked rate"
+          placeholder="Booked rate"
           required
           className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[var(--color-primary)] focus:bg-white"
         />
@@ -467,7 +524,7 @@ function CreateLoadForm({
           min="0"
           step="0.01"
           defaultValue={selectedOpportunity?.customerPrice ?? ""}
-          placeholder="Customer price"
+          placeholder="Customer price (if applicable)"
           className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[var(--color-primary)] focus:bg-white"
         />
         <input
@@ -476,7 +533,7 @@ function CreateLoadForm({
           min="0"
           step="0.01"
           defaultValue={selectedOpportunity?.carrierPay ?? ""}
-          placeholder="Carrier pay"
+          placeholder="Carrier pay (if applicable)"
           className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[var(--color-primary)] focus:bg-white"
         />
         <select
@@ -492,10 +549,10 @@ function CreateLoadForm({
         </select>
         <select
           name="driverId"
-          defaultValue={preselectedDriverId ?? ""}
+          defaultValue={preselectedDriverId ?? (isOwner ? "" : drivers[0]?.id ?? "")}
           className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-[var(--color-primary)] focus:bg-white md:col-span-2"
         >
-          <option value="">Unassigned unit</option>
+          {isOwner ? <option value="">Unassigned unit</option> : null}
           {drivers.map((driver) => (
             <option key={driver.id} value={driver.id}>
               {driver.driverName} • {driver.company}
@@ -528,21 +585,27 @@ function DriversSection({
   selectedLead,
   selectedOpportunity,
   preselectedDriverId,
+  dispatcherOptions,
 }: {
   entries: DriverReviewEntry[];
   filters: DispatchBoardFilters;
   selectedLead?: Lead | null;
   selectedOpportunity?: LoadOpportunity | null;
   preselectedDriverId?: string | null;
+  dispatcherOptions: Array<{
+    email: string;
+    label: string;
+  }>;
 }) {
   return (
     <section className="space-y-4">
       <div className="space-y-2">
         <h2 className="font-heading text-2xl font-semibold text-slate-950">
-          Drivers
+          Unit Readiness
         </h2>
         <p className="text-sm leading-6 text-slate-600">
-          Available units, active execution, and lightweight status control.
+          See which units are available, what they are running now, and which
+          ones are ready for another move.
         </p>
       </div>
 
@@ -595,6 +658,15 @@ function DriversSection({
                     {driver.capacity ? `${driver.capacity} cars` : "TBD"}
                   </dd>
                 </div>
+                <div>
+                  <dt className="font-semibold text-slate-500">Dispatcher</dt>
+                  <dd className="mt-1">
+                    {getDispatcherLabel(
+                      driver.assignedDispatcherEmail,
+                      dispatcherOptions,
+                    )}
+                  </dd>
+                </div>
                 <div className="sm:col-span-2">
                   <dt className="font-semibold text-slate-500">Current active load</dt>
                   <dd className="mt-2">
@@ -623,6 +695,12 @@ function DriversSection({
                 {driver.truckUnitNumber ? (
                   <StatusBadge label={`Truck ${driver.truckUnitNumber}`} />
                 ) : null}
+                <Link
+                  href={`/dashboard/units/${driver.id}`}
+                  className="text-sm font-semibold text-[var(--color-primary)] transition hover:text-[var(--color-primary-strong)]"
+                >
+                  Open Unit
+                </Link>
               </div>
 
               <form
@@ -680,6 +758,7 @@ function LoadsSection({
   selectedLead,
   selectedOpportunity,
   preselectedDriverId,
+  isOwner,
 }: {
   entries: LoadReviewEntry[];
   drivers: Driver[];
@@ -687,12 +766,13 @@ function LoadsSection({
   selectedLead?: Lead | null;
   selectedOpportunity?: LoadOpportunity | null;
   preselectedDriverId?: string | null;
+  isOwner: boolean;
 }) {
   return (
     <section className="space-y-4">
       <div className="space-y-2">
         <h2 className="font-heading text-2xl font-semibold text-slate-950">
-          Loads
+          Booked & Active Loads
         </h2>
         <p className="text-sm leading-6 text-slate-600">
           Booked and active work with status, economics, quick contacts, and
@@ -713,11 +793,15 @@ function LoadsSection({
         </div>
       ) : (
         <div className="space-y-4">
-          {entries.map((entry) => (
-            <article
-              key={entry.load.id}
-              className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-35px_rgba(15,23,42,0.16)]"
-            >
+          {entries.map((entry) => {
+            const routeUrl = buildGoogleMapsRouteUrl(entry.load);
+            const driverMessage = buildDriverRouteMessage(entry.load);
+
+            return (
+              <article
+                key={entry.load.id}
+                className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-35px_rgba(15,23,42,0.16)]"
+              >
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <p className="font-heading text-xl font-semibold text-slate-950">
@@ -729,6 +813,7 @@ function LoadsSection({
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <LoadStatusBadge status={entry.load.status} />
+                  {entry.problemCount ? <ProblemFlagBadge /> : null}
                   {entry.problemCount ? (
                     <StatusBadge label={`${entry.problemCount} problems`} tone="border-rose-200 bg-rose-50 text-rose-700" />
                   ) : null}
@@ -781,25 +866,51 @@ function LoadsSection({
                     </p>
                   </div>
                   <div className="mt-4 flex flex-wrap gap-2">
+                    <a
+                      href={routeUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+                    >
+                      Open in Google Maps
+                    </a>
+                    <CopyButton
+                      value={routeUrl}
+                      label="Copy Route Link"
+                      className="px-3 py-2 text-sm"
+                    />
+                    <CopyButton
+                      value={driverMessage}
+                      label="Copy Driver Message"
+                      className="px-3 py-2 text-sm"
+                    />
                     {entry.load.contactPhone ? (
                       <>
                         <a
                           href={`tel:${entry.load.contactPhone}`}
-                          className="text-[var(--color-primary)] transition hover:text-[var(--color-primary-strong)]"
+                          className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
                         >
                           Call contact
                         </a>
-                        <CopyButton value={entry.load.contactPhone} label="Copy phone" />
+                        <CopyButton
+                          value={entry.load.contactPhone}
+                          label="Copy phone"
+                          className="px-3 py-2 text-sm"
+                        />
                       </>
                     ) : null}
                     {entry.load.referenceNumber ? (
-                      <CopyButton value={entry.load.referenceNumber} label="Copy ref" />
+                      <CopyButton
+                        value={entry.load.referenceNumber}
+                        label="Copy ref"
+                        className="px-3 py-2 text-sm"
+                      />
                     ) : null}
                   </div>
                   <div className="mt-4">
                     <Link
                       href={`/dashboard/dispatch/${entry.load.id}`}
-                      className="rounded-full border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
+                      className="inline-flex w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] sm:w-auto"
                     >
                       Open Details
                     </Link>
@@ -833,10 +944,12 @@ function LoadsSection({
                   <input type="hidden" name="loadId" value={entry.load.id} />
                   <select
                     name="driverId"
-                    defaultValue={entry.load.driverId ?? ""}
+                    defaultValue={
+                      entry.load.driverId ?? (isOwner ? "" : drivers[0]?.id ?? "")
+                    }
                     className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none transition focus:border-[var(--color-primary)] focus:bg-white"
                   >
-                    <option value="">Unassigned unit</option>
+                    {isOwner ? <option value="">Unassigned unit</option> : null}
                     {drivers.map((driver) => (
                       <option key={driver.id} value={driver.id}>
                         {driver.driverName} • {driver.company}
@@ -868,8 +981,9 @@ function LoadsSection({
                   </button>
                 </form>
               </div>
-            </article>
-          ))}
+              </article>
+            );
+          })}
         </div>
       )}
     </section>
@@ -884,29 +998,68 @@ export function DispatchBoard({
   selectedLead,
   selectedOpportunity,
   preselectedDriverId,
+  dispatcherOptions,
+  isOwner,
 }: DispatchBoardProps) {
   return (
     <section className="space-y-8">
-      <div className="space-y-3">
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[var(--color-primary)]">
-          Dispatch Operations
-        </p>
-        <h1 className="font-heading text-3xl font-semibold text-slate-950 sm:text-4xl">
-          Book it, assign it, and keep it moving.
-        </h1>
-        <p className="max-w-3xl text-base leading-7 text-slate-600">
-          This board stays operational: driver readiness, booked loads,
-          pricing, contact shortcuts, and links into the full detail record.
-        </p>
+      <div className="rounded-[1.75rem] border border-emerald-100 bg-gradient-to-r from-white via-emerald-50 to-sky-50 px-5 py-5 shadow-[0_26px_70px_-50px_rgba(16,185,129,0.35)]">
+        <div className="space-y-3">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[var(--color-primary)]">
+            Dispatch Operations
+          </p>
+          <h1 className="font-heading text-3xl font-semibold text-slate-950 sm:text-4xl">
+            Book it, assign it, and keep it moving.
+          </h1>
+          <p className="max-w-3xl text-base leading-7 text-slate-600">
+            This board stays operational: driver readiness, booked loads,
+            pricing, contact shortcuts, and links into the full detail record.
+          </p>
+        </div>
       </div>
 
+      <PagePlaybook
+        eyebrow={isOwner ? "Owner Workflow" : "Dispatcher Workflow"}
+        title="How to use Dispatch"
+        description={
+          isOwner
+            ? "This page is for confirmed work. Use it to create units, book real loads, and keep execution clear for every dispatcher."
+            : "This page is where confirmed jobs live. Keep unit status, booked load details, contacts, and notes current so someone else could cover your work if needed."
+        }
+        steps={[
+          {
+            title: "Confirm the unit is ready",
+            description:
+              "Use Unit Readiness to check assigned loads, current location, capacity, and which truck is actually available.",
+          },
+          {
+            title: "Create the real load record",
+            description:
+              "If a board opportunity is confirmed, create the booked load here so pricing, timing, and contacts live in one place.",
+          },
+          {
+            title: "Update as the job moves",
+            description:
+              "Keep load status, assignment, and notes up to date so the board reflects reality without side conversations.",
+          },
+        ]}
+        actions={[
+          { label: "Open Fleet Movement", href: "/dashboard/movement" },
+          { label: "Open Main Dashboard", href: "/dashboard" },
+        ]}
+      />
+
       <div className="grid gap-6 xl:grid-cols-[1fr,1.2fr]">
-        <CreateDriverForm />
+        <CreateDriverForm
+          dispatcherOptions={dispatcherOptions}
+          isOwner={isOwner}
+        />
         <CreateLoadForm
           drivers={drivers}
           selectedLead={selectedLead}
           selectedOpportunity={selectedOpportunity}
           preselectedDriverId={preselectedDriverId}
+          isOwner={isOwner}
         />
       </div>
 
@@ -916,6 +1069,7 @@ export function DispatchBoard({
         selectedLead={selectedLead}
         selectedOpportunity={selectedOpportunity}
         preselectedDriverId={preselectedDriverId}
+        dispatcherOptions={dispatcherOptions}
       />
 
       <LoadsSection
@@ -925,6 +1079,7 @@ export function DispatchBoard({
         selectedLead={selectedLead}
         selectedOpportunity={selectedOpportunity}
         preselectedDriverId={preselectedDriverId}
+        isOwner={isOwner}
       />
     </section>
   );
