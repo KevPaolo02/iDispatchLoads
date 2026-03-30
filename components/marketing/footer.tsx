@@ -36,7 +36,7 @@ export function Footer() {
             </Link>
             <p className="mt-4 text-sm leading-7 text-slate-400">
               {isSpanish
-                ? "Servicios de dispatch confiables para choferes y dueños-operadores que quieren mejores cargas, mejores tarifas y una operación más clara."
+                ? "Servicios de dispatch confiables para conductores y dueños-operadores que quieren mejores cargas, mejores tarifas y una operación más clara."
                 : "Reliable dispatch services for owner-operators who want better loads, stronger rates, and a smoother day-to-day operation."}
             </p>
           </div>

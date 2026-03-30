@@ -148,14 +148,14 @@ const serviceAreas = [
 
 const pricingOptions = [
   {
-    title: "10% per load",
+    title: "Percentage per load",
     description:
       "Best if you prefer to pay based on the freight being moved and want dispatch cost tied directly to load activity.",
   },
   {
-    title: "$500 per month",
+    title: "Weekly fee",
     description:
-      "Best if you want a fixed monthly dispatch cost and prefer a simple flat-fee setup for your operation.",
+      "Best if you want a fixed weekly dispatch cost and prefer a simpler predictable fee structure for your operation.",
   },
 ];
 
@@ -189,7 +189,7 @@ const faqs = [
   {
     question: "How much does iDispatchLoads.com charge?",
     answer:
-      "We keep pricing simple with two options: 10% per load or $500 per month. The right option depends on how you prefer to structure dispatch cost for your operation.",
+      "We keep pricing simple with two options: a percentage per load or a weekly fee. The right option depends on how you prefer to structure dispatch cost for your operation.",
   },
 ];
 

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -28,9 +29,16 @@ export function Navbar() {
       <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-4 sm:px-8 lg:px-10">
         <Link
           href={isSpanish ? "/" : "/en"}
-          className="text-sm font-semibold uppercase tracking-[0.28em] text-slate-950"
+          className="flex items-center gap-3"
         >
-          iDispatchLoads.com
+          <Image
+            src="/idispatchloads-logo-road-shield.svg"
+            alt="iDispatchLoads.com"
+            width={164}
+            height={41}
+            className="h-auto w-[150px] sm:w-[164px]"
+            priority
+          />
         </Link>
 
         <div className="flex items-center gap-3">

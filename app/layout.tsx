@@ -5,11 +5,11 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: new URL("https://idispatchloads.com"),
   title: {
-    default: "iDispatchLoads.com | Dispatch en Español para Choferes del Noreste",
+    default: "iDispatchLoads.com | Dispatch en Español para Conductores del Noreste",
     template: "%s | iDispatchLoads.com",
   },
   description:
-    "Servicios de dispatch en español para choferes y dueños-operadores que trabajan desde, por, o hacia New York, New Jersey, Connecticut y Pennsylvania.",
+    "Servicios de dispatch en español para conductores y dueños-operadores que trabajan desde, por, o hacia New York, New Jersey, Connecticut y Pennsylvania.",
   alternates: {
     canonical: "/",
   },
@@ -17,23 +17,23 @@ export const metadata: Metadata = {
     type: "website",
     url: "https://idispatchloads.com",
     siteName: "iDispatchLoads.com",
-    title: "iDispatchLoads.com | Dispatch en Español para Choferes del Noreste",
+    title: "iDispatchLoads.com | Dispatch en Español para Conductores del Noreste",
     description:
-      "Dispatch en español para choferes que trabajan NY, NJ, CT y PA.",
+      "Dispatch en español para conductores que trabajan NY, NJ, CT y PA.",
     images: [
       {
         url: "/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "iDispatchLoads.com dispatch en español para choferes del noreste",
+        alt: "iDispatchLoads.com dispatch en español para conductores del noreste",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "iDispatchLoads.com | Dispatch en Español para Choferes del Noreste",
+    title: "iDispatchLoads.com | Dispatch en Español para Conductores del Noreste",
     description:
-      "Dispatch en español para choferes que trabajan NY, NJ, CT y PA.",
+      "Dispatch en español para conductores que trabajan NY, NJ, CT y PA.",
     images: ["/twitter-image"],
   },
   robots: {

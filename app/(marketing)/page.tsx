@@ -6,13 +6,13 @@ import { SectionHeading } from "@/components/shared/section-heading";
 import { SectionShell } from "@/components/shared/section-shell";
 
 export const metadata: Metadata = {
-  title: "Dispatch en Español para Choferes que Trabajan NY, NJ, CT y PA",
+  title: "Dispatch en Español para Conductores que Trabajan NY, NJ, CT y PA",
   description:
-    "Servicios de dispatch en español para choferes y dueños-operadores que trabajan desde, por, o hacia New York, New Jersey, Connecticut y Pennsylvania. Ahorra tiempo, consigue mejores tarifas y mantente en movimiento.",
+    "Servicios de dispatch en español para conductores y dueños-operadores que trabajan desde, por, o hacia New York, New Jersey, Connecticut y Pennsylvania. Ahorra tiempo, consigue mejores tarifas y mantente en movimiento.",
   keywords: [
     "dispatch en español para troqueros",
-    "dispatch para choferes en new york",
-    "dispatch para choferes en new jersey",
+    "dispatch para conductores en new york",
+    "dispatch para conductores en new jersey",
     "dispatch en español connecticut",
     "dispatch en español pennsylvania",
     "dispatch noreste en español",
@@ -27,9 +27,9 @@ export const metadata: Metadata = {
   },
   category: "Transportation",
   openGraph: {
-    title: "Dispatch en Español para Choferes que Trabajan NY, NJ, CT y PA",
+    title: "Dispatch en Español para Conductores que Trabajan NY, NJ, CT y PA",
     description:
-      "Ayudamos a choferes y dueños-operadores a conseguir mejores cargas y mantenerse en movimiento en el corredor del noreste.",
+      "Ayudamos a conductores y dueños-operadores a conseguir mejores cargas y mantenerse en movimiento en el corredor del noreste.",
     url: "https://idispatchloads.com",
     locale: "es_US",
     images: [
@@ -37,14 +37,14 @@ export const metadata: Metadata = {
         url: "/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "Dispatch en español para choferes del noreste",
+        alt: "Dispatch en español para conductores del noreste",
       },
     ],
   },
   twitter: {
-    title: "Dispatch en Español para Choferes que Trabajan NY, NJ, CT y PA",
+    title: "Dispatch en Español para Conductores que Trabajan NY, NJ, CT y PA",
     description:
-      "Dispatch en español para choferes que corren NY, NJ, CT y PA.",
+      "Dispatch en español para conductores que corren NY, NJ, CT y PA.",
     images: ["/twitter-image"],
   },
 };
@@ -103,7 +103,7 @@ const trustSignals = [
   {
     title: "Enfoque Real en el Noreste",
     description:
-      "No estamos tratando de trabajar todos los estados del país. Buscamos choferes que sí corren el área de NY, NJ, CT y PA.",
+      "No estamos tratando de trabajar todos los estados del país. Buscamos conductores que sí corren el área de NY, NJ, CT y PA.",
   },
   {
     title: "Soporte Directo de Dispatch",
@@ -127,12 +127,12 @@ const serviceAreas = [
   {
     title: "Apoyo para Rutas de New York",
     description:
-      "Trabajamos con choferes que entran, salen o cruzan New York y necesitan mejor organización, mejores tarifas y menos tiempo perdido.",
+      "Trabajamos con conductores que entran, salen o cruzan New York y necesitan mejor organización, mejores tarifas y menos tiempo perdido.",
   },
   {
     title: "Apoyo para Rutas de New Jersey",
     description:
-      "Ayudamos a choferes que corren cargas en New Jersey a mantenerse más organizados y mejor negociados.",
+      "Ayudamos a conductores que corren cargas en New Jersey a mantenerse más organizados y mejor negociados.",
   },
   {
     title: "Apoyo para Rutas de Connecticut",
@@ -148,23 +148,23 @@ const serviceAreas = [
 
 const pricingOptions = [
   {
-    title: "10% por carga",
+    title: "Porcentaje por carga",
     description:
-      "Ideal si prefieres pagar en función del trabajo que se mueve y mantener el costo alineado con tus cargas.",
+      "Ideal si prefieres pagar en función de las cargas que se mueven y mantener el costo alineado con tu operación.",
   },
   {
-    title: "$500 al mes",
+    title: "Tarifa semanal",
     description:
-      "Ideal si quieres una tarifa mensual fija para tu operación y prefieres trabajar con un costo claro cada mes.",
+      "Ideal si prefieres una tarifa fija semanal y trabajar con un costo más predecible para tu operación.",
   },
 ];
 
 const faqs = [
   {
     question:
-      "¿Con qué tipo de choferes trabaja iDispatchLoads.com en NY, NJ, CT y PA?",
+      "¿Con qué tipo de conductores trabaja iDispatchLoads.com en NY, NJ, CT y PA?",
     answer:
-      "Nos enfocamos en choferes, dueños-operadores y pequeñas flotillas que trabajan desde, por, o hacia New York, New Jersey, Connecticut y Pennsylvania. El mejor fit es alguien que quiere cargas más consistentes y menos tiempo perdido hablando con brokers.",
+      "Nos enfocamos en conductores, dueños-operadores y pequeñas flotillas que trabajan desde, por, o hacia New York, New Jersey, Connecticut y Pennsylvania. El mejor fit es alguien que quiere cargas más consistentes y menos tiempo perdido hablando con brokers.",
   },
   {
     question: "¿Solo trabajan rutas del noreste?",
@@ -189,7 +189,7 @@ const faqs = [
   {
     question: "¿Cuánto cobra iDispatchLoads.com?",
     answer:
-      "Trabajamos con dos opciones simples: 10% por carga o $500 al mes. La mejor opción depende de cómo prefieras manejar el costo de dispatch en tu operación.",
+      "Trabajamos con dos estructuras simples: porcentaje por carga o una tarifa semanal. La mejor opción depende de cómo prefieras manejar el costo de dispatch en tu operación.",
   },
 ];
 
@@ -215,7 +215,7 @@ export default function Home() {
       name: "iDispatchLoads.com",
       url: "https://idispatchloads.com",
       description:
-        "Servicios de dispatch para choferes y dueños-operadores que trabajan desde, por, o hacia New York, New Jersey, Connecticut y Pennsylvania.",
+        "Servicios de dispatch para conductores y dueños-operadores que trabajan desde, por, o hacia New York, New Jersey, Connecticut y Pennsylvania.",
       areaServed: [
         { "@type": "State", name: "New York" },
         { "@type": "State", name: "New Jersey" },
@@ -230,7 +230,7 @@ export default function Home() {
       ],
       audience: {
         "@type": "Audience",
-        audienceType: "Choferes, dueños-operadores y pequeñas flotillas",
+        audienceType: "Conductores, dueños-operadores y pequeñas flotillas",
       },
     },
     {
@@ -260,7 +260,7 @@ export default function Home() {
       <SectionShell id="servicios" tone="light">
         <SectionHeading
           eyebrow="Servicios"
-          title="Dispatch en español para choferes que de verdad mueven el noreste."
+          title="Dispatch en español para conductores que de verdad mueven el noreste."
           description="Si trabajas en NY, NJ, CT y PA y todavía estás perdiendo horas revisando load boards y llamando brokers, estás perdiendo tiempo y dejando dinero sobre la mesa."
         />
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
@@ -291,7 +291,7 @@ export default function Home() {
               Más manejo. Menos llamadas. Mejores cargas.
             </h2>
             <p className="mt-4 max-w-xl text-lg leading-8 text-slate-300">
-              Nuestro servicio está pensado para choferes que quieren proteger
+              Nuestro servicio está pensado para conductores que quieren proteger
               su tiempo, mejorar sus números y mantenerse con cargas más
               constantes dentro del corredor del noreste.
             </p>
@@ -318,7 +318,7 @@ export default function Home() {
         <SectionHeading
           eyebrow="Cómo Funciona"
           title="Tres pasos para dejar de cargar con todo tú solo."
-          description="Lo mantenemos simple para que los choferes correctos puedan empezar rápido y volver a enfocarse en la carretera."
+          description="Lo mantenemos simple para que los conductores correctos puedan empezar rápido y volver a enfocarse en la carretera."
         />
         <div className="grid gap-6 lg:grid-cols-3">
           {steps.map((step) => (
@@ -343,7 +343,7 @@ export default function Home() {
       <SectionShell id="quienes-califican" tone="brand">
         <SectionHeading
           eyebrow="Con Quién Trabajamos"
-          title="No buscamos cualquier chofer. Buscamos choferes que realmente trabajan el noreste."
+          title="No buscamos cualquier conductor. Buscamos conductores que realmente trabajan el noreste."
           description="Queremos mejor fit, no solo más formularios. Si tú corres por NY, NJ, CT y PA, queremos hablar contigo."
         />
         <div className="mb-8 grid gap-4 lg:grid-cols-3">
@@ -428,7 +428,7 @@ export default function Home() {
       <SectionShell id="preguntas-frecuentes" tone="brand">
         <SectionHeading
           eyebrow="Preguntas Frecuentes"
-          title="Lo que normalmente preguntan los choferes antes de empezar."
+          title="Lo que normalmente preguntan los conductores antes de empezar."
           description="Las buenas landing pages aclaran las dudas más importantes antes del primer contacto. Estas son algunas de las preguntas más comunes."
         />
         <div className="grid gap-5 lg:grid-cols-2">

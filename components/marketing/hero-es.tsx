@@ -15,13 +15,13 @@ export function HeroEs() {
       <div className="relative mx-auto grid w-full max-w-7xl gap-16 px-6 py-20 sm:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:px-10 lg:py-28">
         <div className="max-w-2xl">
           <p className="text-sm font-semibold uppercase tracking-[0.32em] text-cyan-300">
-            Para Choferes de NY / NJ / CT / PA
+            Para Conductores de NY / NJ / CT / PA
           </p>
           <h1 className="mt-6 text-4xl font-semibold tracking-tight text-white sm:text-5xl lg:text-6xl">
             Deja de Perder Horas Persiguiendo Cargas Baratas en el Noreste
           </h1>
           <p className="mt-6 max-w-xl text-lg leading-8 text-slate-300 sm:text-xl">
-            Ayudamos a choferes y dueños-operadores que trabajan desde, por, o
+            Ayudamos a conductores y dueños-operadores que trabajan desde, por, o
             hacia New York, New Jersey, Connecticut y Pennsylvania a ahorrar
             tiempo, conseguir mejores cargas y mantenerse en movimiento sin
             vivir pegados al teléfono.
@@ -64,7 +64,7 @@ export function HeroEs() {
             <p className="text-sm text-cyan-300">Enfoque en el Corredor Noreste</p>
             <p className="mt-3 text-2xl font-semibold text-white">
               Buscamos choferes que trabajen cargas en New York, New Jersey,
-              Connecticut y Pennsylvania, no choferes de cualquier zona.
+              Connecticut y Pennsylvania, no conductores de cualquier zona.
             </p>
           </div>
           <div className="rounded-[2rem] border border-white/10 bg-white/5 p-6 backdrop-blur-sm">
