@@ -2,10 +2,13 @@ import Link from "next/link";
 
 import { sendOfferAction } from "@/app/(dashboard)/actions";
 import { CentralDispatchPasteForm } from "@/components/central-dispatch-paste-form";
+import DispatchMap from "@/components/dispatch-map-loader";
+import type { ActiveLoadRoute, CandidateLoadPin } from "@/components/dispatch-map";
 import { FlashBanner } from "@/components/flash-banner";
 import { SectionCard } from "@/components/section-card";
 import { StatusBadge } from "@/components/status-badge";
 import { getDashboardData } from "@/lib/data";
+import { geocodeCities, getGeocodeKey } from "@/lib/geocode";
 import {
   getBackhaulNeeds,
   getDriverRouteProfile,
@@ -15,6 +18,13 @@ import {
   type LoadFit,
 } from "@/lib/route-planning";
 import { formatCurrency, formatDate, normalizeArray, routeLabel } from "@/lib/utils";
+
+function parseDriverLocation(value: string | null | undefined): { city: string; state: string } | null {
+  if (!value) return null;
+  const match = value.match(/^([^,]+),\s*([A-Za-z]{2})$/);
+  if (!match) return null;
+  return { city: match[1].trim(), state: match[2].toUpperCase() };
+}
 
 function verdictStyle(verdict: LoadFit["verdict"]) {
   if (verdict === "TAKE") return "border-emerald-400/30 bg-emerald-400/10 text-emerald-100";
@@ -50,6 +60,49 @@ export default async function DispatcherPlannerPage({
   const takeLoads = loadFits.filter((fit) => fit.verdict === "TAKE");
   const maybeLoads = loadFits.filter((fit) => fit.verdict === "MAYBE");
   const riskyLoads = loadFits.filter((fit) => fit.verdict === "RISKY");
+
+  // Build geocoding inputs: driver location, active load route, all candidate
+  // load pickups. Active load = the driver's currently-assigned load if any.
+  const activeLoad = driver
+    ? loads.find((load) => load.driver_id === driver.id && load.status === "ASSIGNED")
+    : null;
+
+  const driverLoc = driver ? parseDriverLocation(driver.current_location) : null;
+
+  const toGeocode: Array<{ city: string; state: string }> = [];
+  if (driverLoc) toGeocode.push(driverLoc);
+  if (activeLoad) {
+    toGeocode.push({ city: activeLoad.pickup_city, state: activeLoad.pickup_state });
+    toGeocode.push({ city: activeLoad.delivery_city, state: activeLoad.delivery_state });
+  }
+  for (const fit of loadFits) {
+    toGeocode.push({ city: fit.load.pickup_city, state: fit.load.pickup_state });
+  }
+
+  // Cache-aware batch geocode (sequential, 1.1s between uncached requests).
+  const coordsByKey = await geocodeCities(toGeocode);
+
+  const driverPosition = driverLoc ? coordsByKey.get(getGeocodeKey(driverLoc.city, driverLoc.state)) ?? null : null;
+
+  const activeRoute: ActiveLoadRoute | null = activeLoad
+    ? {
+        pickup:
+          coordsByKey.get(getGeocodeKey(activeLoad.pickup_city, activeLoad.pickup_state)) ?? null,
+        delivery:
+          coordsByKey.get(getGeocodeKey(activeLoad.delivery_city, activeLoad.delivery_state)) ?? null,
+        pickupLabel: `${activeLoad.pickup_city}, ${activeLoad.pickup_state}`,
+        deliveryLabel: `${activeLoad.delivery_city}, ${activeLoad.delivery_state}`,
+      }
+    : null;
+
+  const candidateLoadPins: CandidateLoadPin[] = loadFits.map((fit) => ({
+    id: fit.load.id,
+    pickup: coordsByKey.get(getGeocodeKey(fit.load.pickup_city, fit.load.pickup_state)) ?? null,
+    pickupLabel: `${fit.load.pickup_city}, ${fit.load.pickup_state}`,
+    deliveryLabel: `${fit.load.delivery_city}, ${fit.load.delivery_state}`,
+    payoutLabel: formatCurrency(fit.load.price),
+    verdict: fit.verdict,
+  }));
 
   return (
     <div className="space-y-6">
@@ -159,6 +212,30 @@ export default async function DispatcherPlannerPage({
 
       {driver ? (
         <>
+          <SectionCard
+            title="Route Chain Map"
+            description={
+              activeLoad
+                ? "Active route, where the truck goes empty, and candidate pickups color-coded by verdict."
+                : "Candidate pickups color-coded by verdict. Assign a load to draw the active route and empty-after-delivery zone."
+            }
+          >
+            <DispatchMap
+              driverPosition={driverPosition}
+              driverName={driver.name}
+              driverLocationLabel={driver.current_location}
+              activeRoute={activeRoute}
+              candidateLoads={candidateLoadPins}
+            />
+            {(driverLoc && !driverPosition) ||
+            candidateLoadPins.some((p) => !p.pickup) ||
+            (activeRoute && (!activeRoute.pickup || !activeRoute.delivery)) ? (
+              <p className="mt-3 text-xs text-amber-200/80">
+                Some locations could not be geocoded yet. The map updates as Nominatim resolves them (rate-limited to 1/sec).
+              </p>
+            ) : null}
+          </SectionCard>
+
           <section className="grid gap-4 md:grid-cols-3">
             <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4">
               <p className="text-xs uppercase tracking-[0.2em] text-emerald-200">Take</p>

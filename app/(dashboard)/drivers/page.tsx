@@ -1,4 +1,9 @@
-import { createDriverAction, deleteDriverAction, updateDriverAction } from "@/app/(dashboard)/actions";
+import {
+  createDriverAction,
+  deleteDriverAction,
+  updateDriverAction,
+  updateDriverLocationAction,
+} from "@/app/(dashboard)/actions";
 import { ConfirmForm } from "@/components/confirm-form";
 import { DriverForm } from "@/components/driver-form";
 import { FlashBanner } from "@/components/flash-banner";
@@ -80,6 +85,27 @@ export default async function DriversPage({
                     </button>
                   </ConfirmForm>
                 </div>
+
+                {/* Phase 3.4 — inline location edit. Feeds the route planner map. */}
+                <form
+                  action={updateDriverLocationAction}
+                  className="mb-5 flex flex-col gap-2 rounded-2xl border border-sky-400/20 bg-sky-400/5 p-3 sm:flex-row sm:items-end"
+                >
+                  <input type="hidden" name="driver_id" value={driver.id} />
+                  <input type="hidden" name="return_to" value="/drivers" />
+                  <label className="flex-1 space-y-1 text-xs uppercase tracking-[0.18em] text-sky-200">
+                    Current location
+                    <input
+                      name="current_location"
+                      defaultValue={driver.current_location}
+                      placeholder="Newark, NJ"
+                      className="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm normal-case tracking-normal text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-sky-400/50"
+                    />
+                  </label>
+                  <button className="rounded-2xl border border-sky-400/40 bg-sky-400/10 px-4 py-2 text-sm font-semibold text-sky-100 transition hover:bg-sky-400/20">
+                    Save location
+                  </button>
+                </form>
 
                 <form action={updateDriverAction} className="space-y-4">
                   <input type="hidden" name="id" value={driver.id} />
