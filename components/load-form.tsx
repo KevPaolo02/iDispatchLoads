@@ -1,4 +1,6 @@
+import { ContactPicker } from "@/components/contact-picker";
 import { vehicleTypeOptions } from "@/lib/constants";
+import type { ContactRow } from "@/lib/data";
 import type { Database } from "@/types/database";
 
 type LoadRow = Database["public"]["Tables"]["loads"]["Row"];
@@ -14,6 +16,12 @@ type LoadFormProps = {
    * would invalidate the audit trail. Notes remain editable.
    */
   lockCoreFields?: boolean;
+  /**
+   * Pass the contacts list so the broker/dealer pickers render. Empty list
+   * means no pickers are shown — useful for v1 callers that haven't been
+   * updated to pass them yet.
+   */
+  contacts?: ContactRow[];
 };
 
 const inputClassName =
@@ -21,7 +29,14 @@ const inputClassName =
 
 const labelClassName = "space-y-2 text-sm text-slate-300";
 
-export function LoadForm({ action, submitLabel, returnTo, load, lockCoreFields = false }: LoadFormProps) {
+export function LoadForm({
+  action,
+  submitLabel,
+  returnTo,
+  load,
+  lockCoreFields = false,
+  contacts = [],
+}: LoadFormProps) {
   return (
     <form action={action} className="space-y-4">
       {load?.id ? <input type="hidden" name="id" value={load.id} /> : null}
@@ -121,6 +136,25 @@ export function LoadForm({ action, submitLabel, returnTo, load, lockCoreFields =
           />
         </label>
       </div>
+
+      {contacts.length > 0 ? (
+        <div className="grid gap-4 md:grid-cols-2">
+          <ContactPicker
+            name="broker_id"
+            label="Broker (optional)"
+            contactType="broker"
+            contacts={contacts}
+            defaultContactId={load?.broker_id ?? null}
+          />
+          <ContactPicker
+            name="dealer_id"
+            label="Dealer (optional)"
+            contactType="dealer"
+            contacts={contacts}
+            defaultContactId={load?.dealer_id ?? null}
+          />
+        </div>
+      ) : null}
 
       <label className={labelClassName}>
         Notes

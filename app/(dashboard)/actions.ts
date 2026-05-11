@@ -15,6 +15,7 @@ import {
   booleanFromCheckbox,
   optionalNumber,
   optionalString,
+  optionalUuid,
   parsePreferredRoutes,
   requiredDate,
   requiredNumber,
@@ -158,7 +159,7 @@ export async function createLoadAction(formData: FormData) {
   try {
     const supabase = await createClient();
 
-    const payload = {
+    const payload: Database["public"]["Tables"]["loads"]["Insert"] = {
       pickup_city: requiredString(formData, "pickup_city", "Pickup city"),
       pickup_state: requiredString(formData, "pickup_state", "Pickup state").toUpperCase(),
       delivery_city: requiredString(formData, "delivery_city", "Delivery city"),
@@ -169,6 +170,8 @@ export async function createLoadAction(formData: FormData) {
       pickup_date: requiredDate(formData, "pickup_date", "Pickup date"),
       notes: optionalString(formData, "notes"),
       status: "NEW" as const,
+      broker_id: optionalUuid(formData, "broker_id"),
+      dealer_id: optionalUuid(formData, "dealer_id"),
     };
 
     const { error } = await supabase.from("loads").insert(payload);
@@ -291,11 +294,16 @@ export async function updateLoadAction(formData: FormData) {
         distance_miles: optionalNumber(formData, "distance_miles"),
         pickup_date: requiredDate(formData, "pickup_date", "Pickup date"),
         notes: optionalString(formData, "notes"),
+        broker_id: optionalUuid(formData, "broker_id"),
+        dealer_id: optionalUuid(formData, "dealer_id"),
       };
     } else {
-      // Notes-only edit on OFFERED / ASSIGNED / COMPLETED loads.
+      // Notes + contact links on OFFERED / ASSIGNED / COMPLETED loads.
+      // Broker/dealer are metadata, not workflow state — safe to edit anytime.
       payload = {
         notes: optionalString(formData, "notes"),
+        broker_id: optionalUuid(formData, "broker_id"),
+        dealer_id: optionalUuid(formData, "dealer_id"),
       };
     }
 
@@ -784,6 +792,196 @@ export async function updateOfferStatusAction(formData: FormData) {
 
   revalidateDispatch(loadIdForRevalidate);
   redirectTo(returnTo, "success", "Offer updated.");
+}
+
+// Phase 4: broker / dealer / shipper memory.
+
+const CONTACT_TYPES = ["broker", "dealer", "shipper"] as const;
+type ContactType = (typeof CONTACT_TYPES)[number];
+
+const PAYMENT_SPEEDS = ["fast", "normal", "slow", "never"] as const;
+type PaymentSpeed = (typeof PAYMENT_SPEEDS)[number];
+
+function asContactType(value: string | null): ContactType | null {
+  return CONTACT_TYPES.find((t) => t === value) ?? null;
+}
+
+function asPaymentSpeed(value: string | null): PaymentSpeed | null {
+  return PAYMENT_SPEEDS.find((s) => s === value) ?? null;
+}
+
+function parseTags(value: string | null): string[] | null {
+  if (!value) return null;
+  const tags = value
+    .split(",")
+    .map((t) => t.trim().toLowerCase().replace(/\s+/g, "_"))
+    .filter(Boolean);
+  return tags.length > 0 ? tags : null;
+}
+
+function buildContactPayload(formData: FormData): Database["public"]["Tables"]["contacts"]["Insert"] {
+  const typeRaw = optionalString(formData, "type");
+  const type = asContactType(typeRaw);
+  if (!type) {
+    throw new InputError("Contact type must be broker, dealer, or shipper.");
+  }
+
+  const paymentSpeedRaw = optionalString(formData, "payment_speed");
+  const paymentSpeed = paymentSpeedRaw ? asPaymentSpeed(paymentSpeedRaw) : null;
+  if (paymentSpeedRaw && !paymentSpeed) {
+    throw new InputError("Payment speed must be fast, normal, slow, or never.");
+  }
+
+  return {
+    name: requiredString(formData, "name", "Name"),
+    type,
+    phone: optionalString(formData, "phone"),
+    avg_wait_minutes: optionalNumber(formData, "avg_wait_minutes"),
+    payment_speed: paymentSpeed,
+    notes: optionalString(formData, "notes"),
+    tags: parseTags(optionalString(formData, "tags")),
+  };
+}
+
+export async function createContactAction(formData: FormData) {
+  const returnTo = getReturnPath(formData, "/contacts");
+
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const payload: Database["public"]["Tables"]["contacts"]["Insert"] = {
+      ...buildContactPayload(formData),
+      created_by: user?.id ?? null,
+    };
+
+    const { error } = await supabase.from("contacts").insert(payload);
+    if (error) throw new Error(error.message);
+  } catch (error) {
+    if (error instanceof InputError) {
+      redirectTo(returnTo, "error", error.message);
+    }
+    console.error("[createContactAction] failed", error);
+    redirectTo(returnTo, "error", "Unable to create contact.");
+  }
+
+  revalidatePath("/contacts");
+  revalidatePath("/");
+  redirectTo(returnTo, "success", "Contact saved.");
+}
+
+export async function updateContactAction(formData: FormData) {
+  const returnTo = getReturnPath(formData, "/contacts");
+  let contactId: string | null = null;
+
+  try {
+    contactId = requiredUuid(formData, "id", "Contact");
+    const supabase = await createClient();
+    const payload = buildContactPayload(formData);
+
+    const { data, error } = await supabase
+      .from("contacts")
+      .update(payload)
+      .eq("id", contactId)
+      .select("id");
+
+    if (error) throw new Error(error.message);
+    if (!data || data.length === 0) {
+      throw new InputError("Contact not found.");
+    }
+  } catch (error) {
+    if (error instanceof InputError) {
+      redirectTo(returnTo, "error", error.message);
+    }
+    console.error("[updateContactAction] failed", error);
+    redirectTo(returnTo, "error", "Unable to update contact.");
+  }
+
+  revalidatePath("/contacts");
+  revalidatePath("/");
+  redirectTo(returnTo, "success", "Contact updated.");
+}
+
+export async function deleteContactAction(formData: FormData) {
+  const returnTo = getReturnPath(formData, "/contacts");
+
+  try {
+    const contactId = requiredUuid(formData, "id", "Contact");
+    const supabase = await createClient();
+    const { error } = await supabase.from("contacts").delete().eq("id", contactId);
+    if (error) throw new Error(error.message);
+  } catch (error) {
+    if (error instanceof InputError) {
+      redirectTo(returnTo, "error", error.message);
+    }
+    console.error("[deleteContactAction] failed", error);
+    redirectTo(returnTo, "error", "Unable to delete contact.");
+  }
+
+  revalidatePath("/contacts");
+  revalidatePath("/");
+  redirectTo(returnTo, "success", "Contact deleted.");
+}
+
+/**
+ * Phase 4.4 — quick-save a broker or dealer directly from the load detail
+ * page, then link the new contact to that load. Streams memory into the app
+ * at the moment the experience is freshest.
+ */
+export async function quickSaveContactFromLoadAction(formData: FormData) {
+  const returnTo = getReturnPath(formData, "/");
+  let loadId: string | null = null;
+
+  try {
+    loadId = requiredUuid(formData, "load_id", "Load");
+    const linkColumn = optionalString(formData, "link_as"); // "broker" | "dealer"
+    if (linkColumn !== "broker" && linkColumn !== "dealer") {
+      throw new InputError("Specify whether this contact is the broker or dealer.");
+    }
+
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const contactPayload: Database["public"]["Tables"]["contacts"]["Insert"] = {
+      ...buildContactPayload(formData),
+      created_by: user?.id ?? null,
+    };
+
+    const insertResult = await supabase.from("contacts").insert(contactPayload).select("id").single();
+
+    if (insertResult.error || !insertResult.data) {
+      throw new Error(insertResult.error?.message ?? "Insert failed.");
+    }
+
+    const contactId = insertResult.data.id;
+    const linkPayload: Database["public"]["Tables"]["loads"]["Update"] =
+      linkColumn === "broker" ? { broker_id: contactId } : { dealer_id: contactId };
+
+    const linkResult = await supabase
+      .from("loads")
+      .update(linkPayload)
+      .eq("id", loadId)
+      .select("id");
+
+    if (linkResult.error) throw new Error(linkResult.error.message);
+    if (!linkResult.data || linkResult.data.length === 0) {
+      throw new InputError("Load not found for linking.");
+    }
+  } catch (error) {
+    if (error instanceof InputError) {
+      redirectTo(returnTo, "error", error.message);
+    }
+    console.error("[quickSaveContactFromLoadAction] failed", error);
+    redirectTo(returnTo, "error", "Unable to save and link contact.");
+  }
+
+  revalidateDispatch(loadId);
+  revalidatePath("/contacts");
+  redirectTo(returnTo, "success", "Contact saved and linked.");
 }
 
 // Phase 2.2: pickup/delivery photo upload.

@@ -11,6 +11,7 @@ const navigation = [
   { href: "/", label: "Board" },
   { href: "/dispatcher", label: "Route Planner" },
   { href: "/drivers", label: "Drivers" },
+  { href: "/contacts", label: "Contacts" },
   { href: "/driver", label: "Driver View" },
   { href: "/driver-panel", label: "Test Panel" },
 ];

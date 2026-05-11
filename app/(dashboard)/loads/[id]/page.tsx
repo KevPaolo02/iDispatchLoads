@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import {
   deleteLoadAction,
+  quickSaveContactFromLoadAction,
   unassignLoadAction,
   updateDriverLoadStatusAction,
   updateLoadAction,
@@ -14,7 +15,7 @@ import { MatchCard } from "@/components/match-card";
 import { OfferCard } from "@/components/offer-card";
 import { SectionCard } from "@/components/section-card";
 import { StatusBadge } from "@/components/status-badge";
-import { getLoadDetail, getLoadPhotos } from "@/lib/data";
+import { getContacts, getLoadDetail, getLoadPhotos, type ContactRow } from "@/lib/data";
 import { formatCurrency, formatDate, normalizeArray, routeLabel } from "@/lib/utils";
 
 export default async function LoadDetailPage({
@@ -30,13 +31,20 @@ export default async function LoadDetailPage({
   const success = normalizeArray(resolvedSearchParams.success)[0];
 
   try {
-    const [{ load }, photos] = await Promise.all([
+    const [{ load }, photos, contacts] = await Promise.all([
       getLoadDetail(resolvedParams.id),
       getLoadPhotos(resolvedParams.id),
+      getContacts(),
     ]);
     const pendingOffers = load.offers.filter((offer) => offer.status === "pending");
     const pickupPhotos = photos.filter((p) => p.stage === "pickup");
     const deliveryPhotos = photos.filter((p) => p.stage === "delivery");
+    const linkedBroker = load.broker_id
+      ? contacts.find((c) => c.id === load.broker_id) ?? null
+      : null;
+    const linkedDealer = load.dealer_id
+      ? contacts.find((c) => c.id === load.dealer_id) ?? null
+      : null;
 
     return (
       <div className="space-y-8">
@@ -75,6 +83,7 @@ export default async function LoadDetailPage({
               returnTo={`/loads/${load.id}`}
               load={load}
               lockCoreFields={load.status !== "NEW"}
+              contacts={contacts}
             />
 
             <div className="mt-4 flex flex-wrap gap-2">
@@ -174,6 +183,26 @@ export default async function LoadDetailPage({
         </SectionCard>
 
         <SectionCard
+          title="Memory"
+          description="Broker and dealer history. Linked contacts show their pace and notes; unlinked side has a quick-save form."
+        >
+          <div className="grid gap-6 lg:grid-cols-2">
+            <ContactPanel
+              label="Broker"
+              linkAs="broker"
+              loadId={load.id}
+              contact={linkedBroker}
+            />
+            <ContactPanel
+              label="Dealer"
+              linkAs="dealer"
+              loadId={load.id}
+              contact={linkedDealer}
+            />
+          </div>
+        </SectionCard>
+
+        <SectionCard
           title="Ranked Driver Matches"
           description="Simple rule-based matching ranked by availability, lane fit, and trailer compatibility."
         >
@@ -211,6 +240,131 @@ export default async function LoadDetailPage({
   } catch {
     notFound();
   }
+}
+
+type ContactPanelProps = {
+  label: "Broker" | "Dealer";
+  linkAs: "broker" | "dealer";
+  loadId: string;
+  contact: ContactRow | null;
+};
+
+function ContactPanel({ label, linkAs, loadId, contact }: ContactPanelProps) {
+  if (contact) {
+    return (
+      <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
+        <p className="text-xs uppercase tracking-[0.22em] text-sky-300">{label}</p>
+        <p className="mt-2 text-lg font-semibold text-white">{contact.name}</p>
+        <div className="mt-2 flex flex-wrap gap-2 text-xs">
+          {contact.phone ? (
+            <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-slate-300">
+              {contact.phone}
+            </span>
+          ) : null}
+          {contact.avg_wait_minutes != null ? (
+            <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-slate-300">
+              ~{contact.avg_wait_minutes}m wait
+            </span>
+          ) : null}
+          {contact.payment_speed ? (
+            <span
+              className={`rounded-full border px-2 py-0.5 ${
+                contact.payment_speed === "slow" || contact.payment_speed === "never"
+                  ? "border-rose-400/30 bg-rose-400/10 text-rose-100"
+                  : "border-emerald-400/30 bg-emerald-400/10 text-emerald-100"
+              }`}
+            >
+              pays {contact.payment_speed}
+            </span>
+          ) : null}
+        </div>
+        {contact.notes ? (
+          <p className="mt-3 whitespace-pre-line text-sm text-slate-300">{contact.notes}</p>
+        ) : null}
+        {contact.tags && contact.tags.length > 0 ? (
+          <div className="mt-3 flex flex-wrap gap-1">
+            {contact.tags.map((tag) => (
+              <span
+                key={tag}
+                className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-xs text-slate-300"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  // No linked contact — render the quick-save form.
+  return (
+    <form
+      action={quickSaveContactFromLoadAction}
+      className="space-y-3 rounded-2xl border border-dashed border-white/10 bg-white/5 p-4"
+    >
+      <input type="hidden" name="load_id" value={loadId} />
+      <input type="hidden" name="link_as" value={linkAs} />
+      <input type="hidden" name="type" value={linkAs} />
+      <input type="hidden" name="return_to" value={`/loads/${loadId}`} />
+
+      <p className="text-xs uppercase tracking-[0.22em] text-sky-300">
+        Remember this {linkAs}
+      </p>
+      <p className="text-xs text-slate-400">
+        Save once now; it surfaces on every future load with this {linkAs}.
+      </p>
+
+      <input
+        name="name"
+        placeholder="Name"
+        className="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-sky-400/50"
+        required
+      />
+      <div className="grid grid-cols-2 gap-2">
+        <input
+          name="phone"
+          placeholder="Phone"
+          className="rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-sky-400/50"
+        />
+        <input
+          name="avg_wait_minutes"
+          type="number"
+          min="0"
+          placeholder="Avg wait (min)"
+          className="rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-sky-400/50"
+        />
+      </div>
+      <select
+        name="payment_speed"
+        defaultValue=""
+        className="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-sky-400/50"
+      >
+        <option value="">Payment speed</option>
+        <option value="fast">Fast</option>
+        <option value="normal">Normal</option>
+        <option value="slow">Slow</option>
+        <option value="never">Never pays</option>
+      </select>
+      <input
+        name="tags"
+        placeholder="Tags (comma-separated, e.g. slow_pay, long_wait)"
+        className="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-sky-400/50"
+      />
+      <textarea
+        name="notes"
+        placeholder="One-line note for future you"
+        className="min-h-16 w-full resize-y rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-sky-400/50"
+      />
+
+      <button
+        type="submit"
+        className="w-full rounded-2xl bg-sky-400 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-300"
+      >
+        Save and link to load
+      </button>
+    </form>
+  );
 }
 
 type PhotoGroupProps = {

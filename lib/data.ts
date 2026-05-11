@@ -8,6 +8,7 @@ type DriverRow = Database["public"]["Tables"]["drivers"]["Row"];
 type LoadRow = Database["public"]["Tables"]["loads"]["Row"];
 type OfferRow = Database["public"]["Tables"]["offers"]["Row"];
 type LoadPhotoRow = Database["public"]["Tables"]["load_photos"]["Row"];
+export type ContactRow = Database["public"]["Tables"]["contacts"]["Row"];
 
 export type LoadPhotoView = LoadPhotoRow & {
   signed_url: string | null;
@@ -80,6 +81,26 @@ export const getDashboardData = cache(async () => {
     loads: hydratedLoads,
     drivers: drivers as DriverRow[],
   };
+});
+
+/**
+ * Fetch all contacts ordered for the broker/dealer pickers and the contacts page.
+ *
+ * Cached with React's `cache()` so dashboard page + load form + load detail
+ * page share the same fetch in a single request.
+ */
+export const getContacts = cache(async (): Promise<ContactRow[]> => {
+  const supabase = await createClient();
+  const result = await supabase
+    .from("contacts")
+    .select("*")
+    .order("type", { ascending: true })
+    .order("name", { ascending: true });
+
+  if (result.error) {
+    throw new Error(`Unable to load contacts: ${result.error.message}`);
+  }
+  return (result.data ?? []) as ContactRow[];
 });
 
 /**

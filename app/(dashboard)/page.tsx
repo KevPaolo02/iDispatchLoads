@@ -6,7 +6,7 @@ import { LoadTable } from "@/components/load-table";
 import { SectionCard } from "@/components/section-card";
 import { SummaryCard } from "@/components/summary-card";
 import { StatusBadge } from "@/components/status-badge";
-import { getDashboardData } from "@/lib/data";
+import { getContacts, getDashboardData } from "@/lib/data";
 import { normalizeArray } from "@/lib/utils";
 
 export default async function DashboardPage({
@@ -17,7 +17,10 @@ export default async function DashboardPage({
   const params = (await searchParams) ?? {};
   const error = normalizeArray(params.error)[0];
   const success = normalizeArray(params.success)[0];
-  const { loads, drivers } = await getDashboardData();
+  const [{ loads, drivers }, contacts] = await Promise.all([
+    getDashboardData(),
+    getContacts(),
+  ]);
 
   const newLoads = loads.filter((load) => load.status === "NEW").length;
   const offeredLoads = loads.filter((load) => load.status === "OFFERED").length;
@@ -48,7 +51,7 @@ export default async function DashboardPage({
           title="Manual Entry"
           description="Use this when the pasted board text is incomplete or you are entering a load from a call."
         >
-          <LoadForm action={createLoadAction} submitLabel="Save load" returnTo="/" />
+          <LoadForm action={createLoadAction} submitLabel="Save load" returnTo="/" contacts={contacts} />
         </SectionCard>
       </section>
 

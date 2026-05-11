@@ -57,6 +57,8 @@ export type Database = {
           external_url: string | null;
           external_payload: Json | null;
           external_synced_at: string | null;
+          broker_id: string | null;
+          dealer_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -80,6 +82,8 @@ export type Database = {
           external_url?: string | null;
           external_payload?: Json | null;
           external_synced_at?: string | null;
+          broker_id?: string | null;
+          dealer_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -103,6 +107,8 @@ export type Database = {
           external_url?: string | null;
           external_payload?: Json | null;
           external_synced_at?: string | null;
+          broker_id?: string | null;
+          dealer_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -115,6 +121,48 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
+      };
+      contacts: {
+        Row: {
+          id: string;
+          name: string;
+          type: "broker" | "dealer" | "shipper";
+          phone: string | null;
+          avg_wait_minutes: number | null;
+          payment_speed: "fast" | "normal" | "slow" | "never" | null;
+          notes: string | null;
+          tags: string[] | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          type: "broker" | "dealer" | "shipper";
+          phone?: string | null;
+          avg_wait_minutes?: number | null;
+          payment_speed?: "fast" | "normal" | "slow" | "never" | null;
+          notes?: string | null;
+          tags?: string[] | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          type?: "broker" | "dealer" | "shipper";
+          phone?: string | null;
+          avg_wait_minutes?: number | null;
+          payment_speed?: "fast" | "normal" | "slow" | "never" | null;
+          notes?: string | null;
+          tags?: string[] | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
       };
       load_photos: {
         Row: {
