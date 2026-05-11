@@ -14,7 +14,7 @@ import { MatchCard } from "@/components/match-card";
 import { OfferCard } from "@/components/offer-card";
 import { SectionCard } from "@/components/section-card";
 import { StatusBadge } from "@/components/status-badge";
-import { getLoadDetail } from "@/lib/data";
+import { getLoadDetail, getLoadPhotos } from "@/lib/data";
 import { formatCurrency, formatDate, normalizeArray, routeLabel } from "@/lib/utils";
 
 export default async function LoadDetailPage({
@@ -30,8 +30,13 @@ export default async function LoadDetailPage({
   const success = normalizeArray(resolvedSearchParams.success)[0];
 
   try {
-    const { load } = await getLoadDetail(resolvedParams.id);
+    const [{ load }, photos] = await Promise.all([
+      getLoadDetail(resolvedParams.id),
+      getLoadPhotos(resolvedParams.id),
+    ]);
     const pendingOffers = load.offers.filter((offer) => offer.status === "pending");
+    const pickupPhotos = photos.filter((p) => p.stage === "pickup");
+    const deliveryPhotos = photos.filter((p) => p.stage === "delivery");
 
     return (
       <div className="space-y-8">
@@ -159,6 +164,16 @@ export default async function LoadDetailPage({
         </section>
 
         <SectionCard
+          title="Photos"
+          description={`Pickup: ${pickupPhotos.length} · Delivery: ${deliveryPhotos.length}. Drivers upload from the /driver view; signed URLs valid for 24 hours.`}
+        >
+          <div className="grid gap-6 lg:grid-cols-2">
+            <PhotoGroup label="Pickup" photos={pickupPhotos} />
+            <PhotoGroup label="Delivery" photos={deliveryPhotos} />
+          </div>
+        </SectionCard>
+
+        <SectionCard
           title="Ranked Driver Matches"
           description="Simple rule-based matching ranked by availability, lane fit, and trailer compatibility."
         >
@@ -196,4 +211,57 @@ export default async function LoadDetailPage({
   } catch {
     notFound();
   }
+}
+
+type PhotoGroupProps = {
+  label: string;
+  photos: Array<{ id: string; signed_url: string | null; uploaded_at: string }>;
+};
+
+function PhotoGroup({ label, photos }: PhotoGroupProps) {
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm font-semibold text-white">{label}</p>
+        <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-xs text-slate-300">
+          {photos.length}
+        </span>
+      </div>
+
+      {photos.length === 0 ? (
+        <p className="mt-3 rounded-2xl border border-dashed border-white/10 bg-white/5 p-4 text-sm text-slate-400">
+          No {label.toLowerCase()} photos uploaded yet.
+        </p>
+      ) : (
+        <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4">
+          {photos.map((photo) =>
+            photo.signed_url ? (
+              <a
+                key={photo.id}
+                href={photo.signed_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block overflow-hidden rounded-xl border border-white/10 bg-slate-950 transition hover:border-sky-400/40"
+                title={new Date(photo.uploaded_at).toLocaleString()}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={photo.signed_url}
+                  alt={`${label} photo`}
+                  className="aspect-square w-full object-cover"
+                />
+              </a>
+            ) : (
+              <div
+                key={photo.id}
+                className="flex aspect-square items-center justify-center rounded-xl border border-white/10 bg-slate-950/60 text-xs text-slate-500"
+              >
+                URL expired
+              </div>
+            ),
+          )}
+        </div>
+      )}
+    </div>
+  );
 }

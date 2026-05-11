@@ -116,6 +116,51 @@ export type Database = {
           },
         ];
       };
+      load_photos: {
+        Row: {
+          id: string;
+          load_id: string;
+          driver_id: string | null;
+          stage: "pickup" | "delivery";
+          storage_path: string;
+          created_by: string | null;
+          uploaded_at: string;
+        };
+        Insert: {
+          id?: string;
+          load_id: string;
+          driver_id?: string | null;
+          stage: "pickup" | "delivery";
+          storage_path: string;
+          created_by?: string | null;
+          uploaded_at?: string;
+        };
+        Update: {
+          id?: string;
+          load_id?: string;
+          driver_id?: string | null;
+          stage?: "pickup" | "delivery";
+          storage_path?: string;
+          created_by?: string | null;
+          uploaded_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "load_photos_load_id_fkey";
+            columns: ["load_id"];
+            isOneToOne: false;
+            referencedRelation: "loads";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "load_photos_driver_id_fkey";
+            columns: ["driver_id"];
+            isOneToOne: false;
+            referencedRelation: "drivers";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       offers: {
         Row: {
           id: string;

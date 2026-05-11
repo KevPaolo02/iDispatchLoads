@@ -1,10 +1,15 @@
 import Link from "next/link";
 
-import { updateDriverLoadStatusAction, updateDriverLocationAction, updateOfferStatusAction } from "@/app/(dashboard)/actions";
+import {
+  updateDriverLoadStatusAction,
+  updateDriverLocationAction,
+  updateOfferStatusAction,
+  uploadLoadPhotoAction,
+} from "@/app/(dashboard)/actions";
 import { FlashBanner } from "@/components/flash-banner";
 import { SectionCard } from "@/components/section-card";
 import { StatusBadge } from "@/components/status-badge";
-import { getDriverPanelData } from "@/lib/data";
+import { getDriverPanelData, type LoadPhotoView } from "@/lib/data";
 import { formatCurrency, formatDate, normalizeArray, routeLabel } from "@/lib/utils";
 
 export default async function DriverViewPage({
@@ -16,7 +21,8 @@ export default async function DriverViewPage({
   const error = normalizeArray(params.error)[0];
   const success = normalizeArray(params.success)[0];
   const selectedDriverId = normalizeArray(params.driverId)[0] ?? null;
-  const { drivers, selectedDriver, offers, assignedLoads } = await getDriverPanelData(selectedDriverId);
+  const { drivers, selectedDriver, offers, assignedLoads, photosByLoadId } =
+    await getDriverPanelData(selectedDriverId);
 
   const pendingOffers = offers.filter((offer) => offer.status === "pending");
   const activeLoads = assignedLoads.filter((load) => load.status !== "COMPLETED");
@@ -148,47 +154,83 @@ export default async function DriverViewPage({
                   No tienes cargas activas.
                 </p>
               ) : (
-                activeLoads.map((load) => (
-                  <article key={load.id} className="rounded-2xl border border-white/10 bg-slate-950/70 p-4">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <StatusBadge status={load.status} />
-                      {load.driver_status ? <StatusBadge status={load.driver_status} /> : null}
-                    </div>
-                    <h2 className="mt-3 text-xl font-semibold text-white">{routeLabel(load)}</h2>
-                    <p className="mt-2 text-sm text-slate-300">
-                      Recoger: {formatDate(load.pickup_date)} · {load.vehicle_type}
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-emerald-200">
-                      Pago: {formatCurrency(load.agreed_price ?? load.price)}
-                    </p>
+                activeLoads.map((load) => {
+                  const loadPhotos = photosByLoadId.get(load.id) ?? [];
+                  const pickupPhotos = loadPhotos.filter((p) => p.stage === "pickup");
+                  const deliveryPhotos = loadPhotos.filter((p) => p.stage === "delivery");
+                  const canShowDeliveryUpload =
+                    load.driver_status === "picked_up" || load.driver_status === "delivered";
+                  const returnTo = `/driver?driverId=${selectedDriver.id}`;
 
-                    <form action={updateDriverLoadStatusAction} className="mt-4 grid gap-3 sm:grid-cols-3">
-                      <input type="hidden" name="load_id" value={load.id} />
-                      <input type="hidden" name="return_to" value={`/driver?driverId=${selectedDriver.id}`} />
-                      <button
-                        name="driver_status"
-                        value="en_route"
-                        className="rounded-2xl border border-sky-400/30 bg-sky-400/10 px-4 py-3 text-base font-semibold text-sky-100 transition hover:bg-sky-400/20"
-                      >
-                        En camino
-                      </button>
-                      <button
-                        name="driver_status"
-                        value="picked_up"
-                        className="rounded-2xl border border-fuchsia-400/30 bg-fuchsia-400/10 px-4 py-3 text-base font-semibold text-fuchsia-100 transition hover:bg-fuchsia-400/20"
-                      >
-                        Recogido
-                      </button>
-                      <button
-                        name="driver_status"
-                        value="delivered"
-                        className="rounded-2xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-3 text-base font-semibold text-emerald-100 transition hover:bg-emerald-400/20"
-                      >
-                        Entregado
-                      </button>
-                    </form>
-                  </article>
-                ))
+                  return (
+                    <article key={load.id} className="rounded-2xl border border-white/10 bg-slate-950/70 p-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <StatusBadge status={load.status} />
+                        {load.driver_status ? <StatusBadge status={load.driver_status} /> : null}
+                      </div>
+                      <h2 className="mt-3 text-xl font-semibold text-white">{routeLabel(load)}</h2>
+                      <p className="mt-2 text-sm text-slate-300">
+                        Recoger: {formatDate(load.pickup_date)} · {load.vehicle_type}
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-emerald-200">
+                        Pago: {formatCurrency(load.agreed_price ?? load.price)}
+                      </p>
+
+                      <form action={updateDriverLoadStatusAction} className="mt-4 grid gap-3 sm:grid-cols-3">
+                        <input type="hidden" name="load_id" value={load.id} />
+                        <input type="hidden" name="return_to" value={returnTo} />
+                        <button
+                          name="driver_status"
+                          value="en_route"
+                          className="rounded-2xl border border-sky-400/30 bg-sky-400/10 px-4 py-3 text-base font-semibold text-sky-100 transition hover:bg-sky-400/20"
+                        >
+                          En camino
+                        </button>
+                        <button
+                          name="driver_status"
+                          value="picked_up"
+                          className="rounded-2xl border border-fuchsia-400/30 bg-fuchsia-400/10 px-4 py-3 text-base font-semibold text-fuchsia-100 transition hover:bg-fuchsia-400/20"
+                        >
+                          Recogido
+                        </button>
+                        <button
+                          name="driver_status"
+                          value="delivered"
+                          className="rounded-2xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-3 text-base font-semibold text-emerald-100 transition hover:bg-emerald-400/20"
+                        >
+                          Entregado
+                        </button>
+                      </form>
+
+                      {/* Phase 2.3 — pickup / delivery photo slots */}
+                      <div className="mt-5 space-y-4 border-t border-white/5 pt-4">
+                        <PhotoSlot
+                          label="Fotos al recoger"
+                          stage="pickup"
+                          loadId={load.id}
+                          driverId={selectedDriver.id}
+                          returnTo={returnTo}
+                          photos={pickupPhotos}
+                        />
+
+                        {canShowDeliveryUpload ? (
+                          <PhotoSlot
+                            label="Fotos al entregar"
+                            stage="delivery"
+                            loadId={load.id}
+                            driverId={selectedDriver.id}
+                            returnTo={returnTo}
+                            photos={deliveryPhotos}
+                          />
+                        ) : (
+                          <p className="rounded-2xl border border-dashed border-white/10 bg-white/5 p-3 text-xs text-slate-400">
+                            Las fotos de entrega se habilitan al marcar &quot;Recogido&quot;.
+                          </p>
+                        )}
+                      </div>
+                    </article>
+                  );
+                })
               )}
             </div>
           </SectionCard>
@@ -209,6 +251,79 @@ export default async function DriverViewPage({
           ) : null}
         </>
       ) : null}
+    </div>
+  );
+}
+
+type PhotoSlotProps = {
+  label: string;
+  stage: "pickup" | "delivery";
+  loadId: string;
+  driverId: string;
+  returnTo: string;
+  photos: LoadPhotoView[];
+};
+
+function PhotoSlot({ label, stage, loadId, driverId, returnTo, photos }: PhotoSlotProps) {
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm font-semibold text-white">{label}</p>
+        <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-xs text-slate-300">
+          {photos.length}
+        </span>
+      </div>
+
+      {photos.length > 0 ? (
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          {photos.map((photo) =>
+            photo.signed_url ? (
+              <a
+                key={photo.id}
+                href={photo.signed_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block overflow-hidden rounded-xl border border-white/10 bg-slate-950"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={photo.signed_url}
+                  alt={`${stage} photo`}
+                  className="aspect-square w-full object-cover"
+                />
+              </a>
+            ) : (
+              <div
+                key={photo.id}
+                className="flex aspect-square items-center justify-center rounded-xl border border-white/10 bg-slate-950/60 text-xs text-slate-500"
+              >
+                URL expired
+              </div>
+            ),
+          )}
+        </div>
+      ) : null}
+
+      <form action={uploadLoadPhotoAction} className="mt-3 space-y-2">
+        <input type="hidden" name="load_id" value={loadId} />
+        <input type="hidden" name="driver_id" value={driverId} />
+        <input type="hidden" name="stage" value={stage} />
+        <input type="hidden" name="return_to" value={returnTo} />
+        <input
+          type="file"
+          name="file"
+          accept="image/*"
+          capture="environment"
+          required
+          className="block w-full text-sm text-slate-300 file:mr-3 file:rounded-2xl file:border-0 file:bg-sky-400 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-slate-950"
+        />
+        <button
+          type="submit"
+          className="w-full rounded-2xl bg-sky-400 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-300"
+        >
+          Subir foto
+        </button>
+      </form>
     </div>
   );
 }

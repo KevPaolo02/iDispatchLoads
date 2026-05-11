@@ -7,6 +7,13 @@ import type { Database } from "@/types/database";
 type DriverRow = Database["public"]["Tables"]["drivers"]["Row"];
 type LoadRow = Database["public"]["Tables"]["loads"]["Row"];
 type OfferRow = Database["public"]["Tables"]["offers"]["Row"];
+type LoadPhotoRow = Database["public"]["Tables"]["load_photos"]["Row"];
+
+export type LoadPhotoView = LoadPhotoRow & {
+  signed_url: string | null;
+};
+
+const PHOTO_SIGNED_URL_TTL_SECONDS = 60 * 60 * 24; // 24h — internal tool
 
 export type OfferWithDriver = OfferRow & {
   driver: DriverRow | null;
@@ -74,6 +81,48 @@ export const getDashboardData = cache(async () => {
     drivers: drivers as DriverRow[],
   };
 });
+
+/**
+ * Fetch all photos for a load and attach a 24h signed URL to each.
+ *
+ * Used by both the dispatcher load detail page and the driver's active load
+ * card. Signed URLs are generated on each render — fast enough at v1 photo
+ * volumes (a load has 2-10 photos) and avoids stale-URL bugs.
+ */
+export async function getLoadPhotos(loadId: string): Promise<LoadPhotoView[]> {
+  const supabase = await createClient();
+  const photosResult = await supabase
+    .from("load_photos")
+    .select("*")
+    .eq("load_id", loadId)
+    .order("uploaded_at", { ascending: true });
+
+  if (photosResult.error) {
+    throw new Error(`Unable to load photos: ${photosResult.error.message}`);
+  }
+
+  const rows = (photosResult.data ?? []) as LoadPhotoRow[];
+  if (rows.length === 0) return [];
+
+  const paths = rows.map((row) => row.storage_path);
+  const signedResult = await supabase.storage
+    .from("load-photos")
+    .createSignedUrls(paths, PHOTO_SIGNED_URL_TTL_SECONDS);
+
+  const signedByPath = new Map<string, string>();
+  if (!signedResult.error && signedResult.data) {
+    for (const entry of signedResult.data) {
+      if (entry.path && entry.signedUrl) {
+        signedByPath.set(entry.path, entry.signedUrl);
+      }
+    }
+  }
+
+  return rows.map((row) => ({
+    ...row,
+    signed_url: signedByPath.get(row.storage_path) ?? null,
+  }));
+}
 
 export async function getLoadDetail(loadId: string) {
   const supabase = await createClient();
@@ -160,6 +209,7 @@ export async function getDriverPanelData(selectedDriverId: string | null) {
       selectedDriver: null,
       offers: [] as DriverOfferView[],
       assignedLoads: [] as LoadRow[],
+      photosByLoadId: new Map<string, LoadPhotoView[]>(),
     };
   }
 
@@ -199,10 +249,58 @@ export async function getDriverPanelData(selectedDriverId: string | null) {
     load: loadsById.get(offer.load_id) ?? null,
   }));
 
+  // Photos for active (non-completed) loads only. Completed loads still have
+  // their photos viewable from the dispatcher detail page; the driver doesn't
+  // need them inline once delivered.
+  const activeLoadIds = assignedLoads
+    .filter((load) => load.status !== "COMPLETED")
+    .map((load) => load.id);
+
+  const photosByLoadId = new Map<string, LoadPhotoView[]>();
+  if (activeLoadIds.length > 0) {
+    const photosResult = await supabase
+      .from("load_photos")
+      .select("*")
+      .in("load_id", activeLoadIds)
+      .order("uploaded_at", { ascending: true });
+
+    if (photosResult.error) {
+      throw new Error(`Unable to load active load photos: ${photosResult.error.message}`);
+    }
+
+    const photoRows = (photosResult.data ?? []) as LoadPhotoRow[];
+    if (photoRows.length > 0) {
+      const paths = photoRows.map((row) => row.storage_path);
+      const signedResult = await supabase.storage
+        .from("load-photos")
+        .createSignedUrls(paths, PHOTO_SIGNED_URL_TTL_SECONDS);
+
+      const signedByPath = new Map<string, string>();
+      if (!signedResult.error && signedResult.data) {
+        for (const entry of signedResult.data) {
+          if (entry.path && entry.signedUrl) {
+            signedByPath.set(entry.path, entry.signedUrl);
+          }
+        }
+      }
+
+      for (const row of photoRows) {
+        const view: LoadPhotoView = {
+          ...row,
+          signed_url: signedByPath.get(row.storage_path) ?? null,
+        };
+        const list = photosByLoadId.get(row.load_id) ?? [];
+        list.push(view);
+        photosByLoadId.set(row.load_id, list);
+      }
+    }
+  }
+
   return {
     drivers,
     selectedDriver,
     offers: offerViews,
     assignedLoads,
+    photosByLoadId,
   };
 }

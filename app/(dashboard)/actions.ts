@@ -786,6 +786,91 @@ export async function updateOfferStatusAction(formData: FormData) {
   redirectTo(returnTo, "success", "Offer updated.");
 }
 
+// Phase 2.2: pickup/delivery photo upload.
+//
+// File goes to storage at {load_id}/{stage}/{uuid}.{ext}. Metadata row in
+// public.load_photos. We do not pre-check the load status — a driver might
+// upload pickup photos before flipping to picked_up, and that's fine.
+export async function uploadLoadPhotoAction(formData: FormData) {
+  const returnTo = getReturnPath(formData, "/driver");
+
+  try {
+    const loadId = requiredUuid(formData, "load_id", "Load");
+    const driverId = requiredUuid(formData, "driver_id", "Driver");
+    const stageRaw = requiredString(formData, "stage", "Stage");
+
+    if (stageRaw !== "pickup" && stageRaw !== "delivery") {
+      throw new InputError("Stage must be 'pickup' or 'delivery'.");
+    }
+    const stage: "pickup" | "delivery" = stageRaw;
+
+    const fileEntry = formData.get("file");
+    if (!(fileEntry instanceof File) || fileEntry.size === 0) {
+      throw new InputError("Please choose a photo to upload.");
+    }
+
+    // Hard cap matches the storage bucket setting; bucket will also reject.
+    if (fileEntry.size > 10 * 1024 * 1024) {
+      throw new InputError("Photo is too large (max 10 MB).");
+    }
+
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      throw new InputError("You must be signed in to upload photos.");
+    }
+
+    // Derive extension from the original filename. Default to jpg if absent
+    // or unrecognized — the storage policy enforces MIME type at write.
+    const originalName = fileEntry.name ?? "";
+    const dotIdx = originalName.lastIndexOf(".");
+    const extension = dotIdx > 0 ? originalName.slice(dotIdx + 1).toLowerCase() : "jpg";
+    const safeExt = ["jpg", "jpeg", "png", "heic", "webp"].includes(extension) ? extension : "jpg";
+
+    const storagePath = `${loadId}/${stage}/${crypto.randomUUID()}.${safeExt}`;
+    const arrayBuffer = await fileEntry.arrayBuffer();
+
+    const { error: uploadError } = await supabase.storage
+      .from("load-photos")
+      .upload(storagePath, arrayBuffer, {
+        contentType: fileEntry.type || "image/jpeg",
+        upsert: false,
+      });
+
+    if (uploadError) {
+      throw new Error(uploadError.message);
+    }
+
+    const { error: insertError } = await supabase.from("load_photos").insert({
+      load_id: loadId,
+      driver_id: driverId,
+      stage,
+      storage_path: storagePath,
+      created_by: user.id,
+    });
+
+    if (insertError) {
+      // Try to clean up the orphan storage object so the bucket doesn't
+      // accumulate untracked files. Best-effort; ignore errors here.
+      await supabase.storage.from("load-photos").remove([storagePath]).catch(() => {});
+      throw new Error(insertError.message);
+    }
+  } catch (error) {
+    if (error instanceof InputError) {
+      redirectTo(returnTo, "error", error.message);
+    }
+
+    console.error("[uploadLoadPhotoAction] failed", error);
+    redirectTo(returnTo, "error", "Unable to upload photo.");
+  }
+
+  revalidateDispatch(requiredUuid(formData, "load_id", "Load"));
+  redirectTo(returnTo, "success", "Photo uploaded.");
+}
+
 // B4: route driver progress through the gated RPC. No COMPLETED -> ASSIGNED
 // regression, no progress on un-assigned loads.
 export async function updateDriverLoadStatusAction(formData: FormData) {
